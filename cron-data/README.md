@@ -105,8 +105,18 @@ python -m pytest
 
 ## Chạy local
 
+### on window
 ```
 cd cron-data
 python -m pip install -r requirements.txt
 python run.py
+```
+
+
+### on mac
+```
+python3 -m venv path/to/venv
+source path/to/venv/bin/activate
+python3 -m pip install -r requirements.txt
+python3 run.py
 ```
