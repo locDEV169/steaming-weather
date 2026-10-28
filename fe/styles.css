@@ -279,10 +279,6 @@ h2 {
   background: linear-gradient(180deg, rgba(9, 20, 31, 0.82), rgba(7, 17, 28, 0.45));
 }
 
-.app-state {
-  min-height: 420px;
-}
-
 .chart-wrap {
   width: 100%;
   min-width: 0;
@@ -297,6 +293,7 @@ h2 {
   height: 100%;
 }
 
+.panel-state,
 .loading-state,
 .error-state {
   min-height: 420px;
@@ -310,6 +307,68 @@ h2 {
 
 .error-state {
   color: #ff9a83;
+}
+
+.view-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.meta-skeleton,
+.footer-skeleton,
+.skeleton-block {
+  display: block;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(174, 187, 197, 0.08),
+    rgba(174, 187, 197, 0.18),
+    rgba(174, 187, 197, 0.08)
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.meta-skeleton {
+  width: 168px;
+  height: 12px;
+}
+
+.footer-skeleton {
+  width: 120px;
+  height: 22px;
+}
+
+.current-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.skeleton-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.skeleton-temp {
+  width: 72px;
+  height: 28px;
+  margin-bottom: 8px;
+}
+
+.skeleton-condition {
+  width: 96px;
+  height: 12px;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
 }
 
 .chart-footnote {
@@ -410,6 +469,7 @@ h2 {
   }
 
   .chart-frame,
+  .panel-state,
   .loading-state,
   .error-state {
     min-height: 350px;

@@ -376,15 +376,7 @@ function WeatherChart({ forecast, mode }) {
   );
 }
 
-function CurrentWeather({ data }) {
-  const [condition, icon] = describeWeather(data.current.weather_code);
-  const updatedAt = new Intl.DateTimeFormat("vi-VN", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(data.current.time));
-
+function PageShell({ meta, current }) {
   return (
     <>
       <header class="topbar">
@@ -396,12 +388,7 @@ function CurrentWeather({ data }) {
             WEATHER<span class="wordmark-light">DESK</span>
           </span>
         </a>
-        <div class="topbar-meta">
-          <span class="live-dot" aria-hidden="true" />
-          <span>Cập nhật {updatedAt}</span>
-          <span class="meta-divider" aria-hidden="true" />
-          <span>{data.timezone_abbreviation || data.timezone}</span>
-        </div>
+        <div class="topbar-meta">{meta}</div>
       </header>
 
       <section class="location-heading" aria-labelledby="page-title">
@@ -413,17 +400,44 @@ function CurrentWeather({ data }) {
           <p class="location-subtitle">Dự báo thời tiết · Việt Nam</p>
         </div>
         <div class="current-weather" aria-live="polite">
-          <span class="current-icon" aria-hidden="true">
-            {icon}
-          </span>
-          <div>
-            <p class="current-temperature">
-              {Math.round(data.current.temperature_2m)}°
-            </p>
-            <p class="current-condition">{condition}</p>
-          </div>
+          {current}
         </div>
       </section>
+    </>
+  );
+}
+
+function CurrentWeatherSummary({ data }) {
+  const [condition, icon] = describeWeather(data.current.weather_code);
+  return (
+    <>
+      <span class="current-icon" aria-hidden="true">
+        {icon}
+      </span>
+      <div>
+        <p class="current-temperature">
+          {Math.round(data.current.temperature_2m)}°
+        </p>
+        <p class="current-condition">{condition}</p>
+      </div>
+    </>
+  );
+}
+
+function TopbarMeta({ data }) {
+  const updatedAt = new Intl.DateTimeFormat("vi-VN", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(data.current.time));
+
+  return (
+    <>
+      <span class="live-dot" aria-hidden="true" />
+      <span>Cập nhật {updatedAt}</span>
+      <span class="meta-divider" aria-hidden="true" />
+      <span>{data.timezone_abbreviation || data.timezone}</span>
     </>
   );
 }
@@ -461,7 +475,7 @@ function ChartKey({ mode }) {
   );
 }
 
-function ForecastSection({ forecast, mode, setMode }) {
+function ForecastSection({ forecast, mode, setMode, loading, error }) {
   const modes = [
     ["overview", "Tổng quan"],
     ["hourly", "Theo giờ"],
@@ -492,6 +506,7 @@ function ForecastSection({ forecast, mode, setMode }) {
               class={`view-button${mode === value ? " is-active" : ""}`}
               aria-pressed={mode === value}
               onClick={() => setMode(value)}
+              disabled={Boolean(loading || error)}
             >
               {label}
             </button>
@@ -499,9 +514,19 @@ function ForecastSection({ forecast, mode, setMode }) {
         </div>
       </div>
 
-      <ChartKey mode={mode} />
+      {!error && <ChartKey mode={mode} />}
       <div class="chart-frame">
-        <WeatherChart forecast={forecast} mode={mode} />
+        {loading && (
+          <div class="loading-state panel-state" role="status">
+            Đang tải biểu đồ dự báo...
+          </div>
+        )}
+        {error && (
+          <div class="error-state panel-state" role="alert">
+            {error}
+          </div>
+        )}
+        {forecast && <WeatherChart forecast={forecast} mode={mode} />}
       </div>
       <p class="chart-footnote">{footnote}</p>
     </section>
@@ -539,7 +564,7 @@ export function App() {
       .catch((loadError) => {
         if (loadError.name !== "AbortError") {
           setError(
-            `${loadError.message} Hãy chạy Flask API (cron-data: python run.py) và Vite (fe: npm run dev).`,
+            `${loadError.message} Hãy chạy Flask API (cron-data: python run.py) và Vite (fe: pnpm run dev).`,
           );
         }
       });
@@ -547,34 +572,53 @@ export function App() {
     return () => controller.abort();
   }, []);
 
+  const loading = !forecast && !error;
+
   return (
     <main class="weather-page">
-      {forecast && <CurrentWeather data={forecast} />}
-      {!forecast && !error && (
-        <div class="loading-state app-state" role="status">
-          Đang tải dữ liệu dự báo...
-        </div>
-      )}
-      {error && (
-        <div class="error-state app-state" role="alert">
-          {error}
-        </div>
-      )}
-      {forecast && (
-        <ForecastSection forecast={forecast} mode={mode} setMode={setMode} />
-      )}
-      {forecast && (
-        <footer class="page-footer">
-          <span>
-            FORECAST MODEL <strong>Open-Meteo</strong>
-          </span>
-          <span> Dữ liệu được cập nhật mỗi 6 giờ</span>
+      <PageShell
+        meta={
+          forecast ? (
+            <TopbarMeta data={forecast} />
+          ) : loading ? (
+            <span class="meta-skeleton" aria-hidden="true" />
+          ) : null
+        }
+        current={
+          forecast ? (
+            <CurrentWeatherSummary data={forecast} />
+          ) : loading ? (
+            <div class="current-skeleton" aria-hidden="true">
+              <span class="skeleton-block skeleton-icon" />
+              <div>
+                <span class="skeleton-block skeleton-temp" />
+                <span class="skeleton-block skeleton-condition" />
+              </div>
+            </div>
+          ) : null
+        }
+      />
+      <ForecastSection
+        forecast={forecast}
+        mode={mode}
+        setMode={setMode}
+        loading={loading}
+        error={error}
+      />
+      <footer class="page-footer">
+        <span>
+          FORECAST MODEL <strong>Open-Meteo</strong>
+        </span>
+        <span> Dữ liệu được cập nhật mỗi 6 giờ</span>
+        {forecast ? (
           <span>
             latitude: {forecast.latitude.toFixed(4)}
             <br /> longitude: {forecast.longitude.toFixed(4)}
           </span>
-        </footer>
-      )}
+        ) : (
+          <span class="footer-skeleton" aria-hidden="true" />
+        )}
+      </footer>
     </main>
   );
 }
