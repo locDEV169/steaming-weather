@@ -14,8 +14,13 @@
     "/api/v1/weather": {
       "get": {
         "summary": "Get the current weather forecast",
-        "description": "Fetches the configured forecast from Open-Meteo and returns the provider payload.",
+        "description": "Fetches the configured forecast from Open-Meteo and returns the provider payload. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
         "operationId": "getWeatherForecast",
+        "security": [
+          {},
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] }
+        ],
         "responses": {
           "200": {
             "description": "Forecast retrieved successfully.",
@@ -23,6 +28,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WeatherForecast"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key when WEATHER_API_KEY is configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
                 }
               }
             }
@@ -52,6 +77,17 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
     "schemas": {
       "WeatherForecast": {
         "type": "object",
@@ -76,7 +112,15 @@
             "properties": {
               "code": {
                 "type": "string",
-                "enum": ["UPSTREAM_TIMEOUT", "UPSTREAM_ERROR", "INVALID_UPSTREAM_RESPONSE"]
+                "enum": [
+                  "UNAUTHORIZED",
+                  "NOT_FOUND",
+                  "METHOD_NOT_ALLOWED",
+                  "INTERNAL_ERROR",
+                  "UPSTREAM_TIMEOUT",
+                  "UPSTREAM_ERROR",
+                  "INVALID_UPSTREAM_RESPONSE"
+                ]
               },
               "message": { "type": "string" }
             }

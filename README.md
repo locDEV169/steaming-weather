@@ -63,6 +63,8 @@ Environment variables (see `.env.example`):
 | --- | --- | --- |
 | `WEATHER_API_HOST` | `127.0.0.1` | Flask bind host |
 | `WEATHER_API_PORT` | `5000` | Flask port |
+| `CORS_ORIGINS` | `*` | Allowed CORS origins (`*` or comma-separated list) |
+| `WEATHER_API_KEY` | _(empty)_ | Optional. When set, `/api/v1/*` requires `X-API-Key` or Bearer token |
 
 ### Run the Flask API (for the FE)
 
@@ -123,7 +125,7 @@ The container binds `0.0.0.0:5000` via Gunicorn.
 
 ```bash
 cd fe
-npm install
+pnpm install
 ```
 
 ### Run development
@@ -140,7 +142,7 @@ python run.py
 
 ```bash
 cd fe
-npm run dev
+pnpm run dev
 ```
 
 Open `http://127.0.0.1:5173/`.
@@ -149,8 +151,8 @@ Open `http://127.0.0.1:5173/`.
 
 ```bash
 cd fe
-npm run build
-npm run preview
+pnpm run build
+pnpm run preview
 ```
 
 `vite preview` also proxies `/api` to `http://127.0.0.1:5000` — Flask must still be running.
@@ -162,8 +164,8 @@ npm run preview
 1. [ ] Install Python deps in `cron-data` (venv + `requirements.txt`)
 2. [ ] (Optional) Copy `.env.example` → `.env`
 3. [ ] Run `python run.py` in `cron-data`
-4. [ ] Install npm deps in `fe` (`npm install`)
-5. [ ] Run `npm run dev` in `fe`
+4. [ ] Install FE deps in `fe` (`pnpm install`)
+5. [ ] Run `pnpm run dev` in `fe`
 6. [ ] Open `http://127.0.0.1:5173/`
 
 ## Common issues

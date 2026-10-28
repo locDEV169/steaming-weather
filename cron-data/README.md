@@ -8,7 +8,8 @@ Flask API và CLI lấy dự báo thời tiết từ [Open-Meteo Forecast API](h
 cron-data/
 ├── src/
 │   ├── __init__.py                 # Application factory
-│   ├── config.py                   # Host/port và Flask settings
+│   ├── config.py                   # Host/port, CORS, optional API key
+│   ├── middleware/                 # CORS, logging, errors, optional auth
 │   ├── routes/weather_routes.py    # URL và HTTP method
 │   ├── controllers/                # HTTP response/error mapping
 │   ├── services/                   # Use cases, gọi package weather
@@ -35,7 +36,26 @@ Project dùng các tham số API sau:
 - Theo giờ: `temperature_2m`, `weather_code`.
 - Theo ngày: `weather_code`, `sunrise`, `rain_sum`, `sunset`, `temperature_2m_max`, `temperature_2m_min`.
 
-API công khai này không cần API key.
+API nguồn Open-Meteo không cần API key. Auth cho Flask API là **optional** (xem middleware bên dưới).
+
+## Middleware
+
+`src/middleware/` đăng ký trong app factory:
+
+| Middleware | Hành vi |
+| --- | --- |
+| CORS | Header CORS + preflight `OPTIONS`. `CORS_ORIGINS=*` (mặc định) hoặc danh sách origin cách nhau bởi dấu phẩy. |
+| Request logging | Log `METHOD path -> status (duration_ms)` qua logger `weather.api`. |
+| Global errors | JSON `{"error":{"code","message"}}` cho 404/405 và exception chưa bắt (`INTERNAL_ERROR`, không lộ chi tiết nội bộ). Upstream 502/504 vẫn map ở controller. |
+| Optional auth | Nếu `WEATHER_API_KEY` trống/không set → không bắt auth. Nếu có giá trị → `/api/v1/*` yêu cầu `X-API-Key` hoặc `Authorization: Bearer <key>`. Swagger/static không bị chặn. |
+
+Ví dụ bật auth:
+
+```powershell
+$env:WEATHER_API_KEY="change-me"
+python run.py
+# Invoke-RestMethod http://127.0.0.1:5000/api/v1/weather -Headers @{ "X-API-Key" = "change-me" }
+```
 
 ## Cài đặt trên Windows
 

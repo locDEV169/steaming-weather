@@ -4,6 +4,7 @@ from flask import Flask
 from flask_swagger_ui import get_swaggerui_blueprint
 
 from src.config import Config
+from src.middleware import register_middleware
 
 
 def create_app(test_config: dict | None = None) -> Flask:
@@ -16,6 +17,8 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.config.from_object(Config)
     if test_config:
         app.config.update(test_config)
+
+    register_middleware(app)
 
     from src.routes.weather_routes import weather_blueprint
 
