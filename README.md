@@ -1,28 +1,28 @@
 # Streaming Weather
 
-Monorepo gồm:
+Monorepo with:
 
-- `cron-data` — Flask API + CLI lấy dự báo thời tiết từ [Open-Meteo](https://open-meteo.com/en/docs)
-- `fe` — Dashboard Preact (Vite) gọi API `GET /api/v1/weather`
+- `cron-data` — Flask API + CLI that fetches weather forecasts from [Open-Meteo](https://open-meteo.com/en/docs)
+- `fe` — Preact (Vite) dashboard that calls `GET /api/v1/weather`
 
-## Yêu cầu
+## Requirements
 
-| Thành phần | Phiên bản gợi ý |
+| Component | Suggested version |
 | --- | --- |
-| Python | 3.12+ (Docker image dùng `python:3.12-slim`) |
-| Node.js | 18+ (khuyến nghị LTS) |
-| npm | Đi kèm Node.js |
+| Python | 3.12+ (Docker image uses `python:3.12-slim`) |
+| Node.js | 18+ (LTS recommended) |
+| npm | Bundled with Node.js |
 
-Không cần API key cho Open-Meteo.
+No API key is required for Open-Meteo.
 
-## Tổng quan chạy local
+## Local overview
 
-Cần **2 process** khi dùng dashboard:
+The dashboard needs **two processes**:
 
 1. Flask API (`cron-data`) — `http://127.0.0.1:5000`
 2. Vite FE (`fe`) — `http://127.0.0.1:5173`
 
-Vite proxy `/api` → Flask, nên FE gọi `/api/v1/weather` cùng origin.
+Vite proxies `/api` to Flask, so the FE calls `/api/v1/weather` on the same origin.
 
 ```text
 Browser → http://127.0.0.1:5173
@@ -35,7 +35,7 @@ Browser → http://127.0.0.1:5173
 
 ## 1. Backend — `cron-data`
 
-### Cài đặt
+### Setup
 
 **macOS / Linux**
 
@@ -57,14 +57,14 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Biến môi trường (xem `.env.example`):
+Environment variables (see `.env.example`):
 
-| Biến | Mặc định | Ý nghĩa |
+| Variable | Default | Meaning |
 | --- | --- | --- |
-| `WEATHER_API_HOST` | `127.0.0.1` | Host bind Flask |
-| `WEATHER_API_PORT` | `5000` | Port Flask |
+| `WEATHER_API_HOST` | `127.0.0.1` | Flask bind host |
+| `WEATHER_API_PORT` | `5000` | Flask port |
 
-### Chạy Flask API (dùng với FE)
+### Run the Flask API (for the FE)
 
 ```bash
 cd cron-data
@@ -72,15 +72,15 @@ source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
 python run.py
 ```
 
-Kiểm tra nhanh:
+Quick check:
 
 ```bash
 curl http://127.0.0.1:5000/api/v1/weather
 ```
 
-### Chạy CLI tải dữ liệu ra file
+### Run the CLI to write data files
 
-Không cần Flask. Script gọi Open-Meteo rồi ghi vào `cron-data/data/`:
+Flask is not required. The script calls Open-Meteo and writes files under `cron-data/data/`:
 
 ```bash
 cd cron-data
@@ -90,14 +90,14 @@ python main.py
 
 Output:
 
-- `data/open_meteo.json` — response thô
-- `data/current.csv` — thời tiết hiện tại
-- `data/hourly.csv` — theo giờ
-- `data/daily.csv` — theo ngày
+- `data/open_meteo.json` — raw response
+- `data/current.csv` — current weather
+- `data/hourly.csv` — hourly forecast
+- `data/daily.csv` — daily forecast
 
-Mỗi lần chạy ghi đè file cũ. CSV dùng UTF-8 BOM (mở được bằng Excel).
+Each run overwrites previous files. CSVs use UTF-8 BOM (Excel-friendly).
 
-### Chạy test
+### Run tests
 
 ```bash
 cd cron-data
@@ -113,20 +113,20 @@ docker build -t weather-api .
 docker run --rm -p 5000:5000 weather-api
 ```
 
-Container bind `0.0.0.0:5000` qua Gunicorn.
+The container binds `0.0.0.0:5000` via Gunicorn.
 
 ---
 
 ## 2. Frontend — `fe`
 
-### Cài đặt
+### Setup
 
 ```bash
 cd fe
 npm install
 ```
 
-### Chạy development
+### Run development
 
 **Terminal 1 — API**
 
@@ -143,7 +143,7 @@ cd fe
 npm run dev
 ```
 
-Mở `http://127.0.0.1:5173/`.
+Open `http://127.0.0.1:5173/`.
 
 ### Build + preview
 
@@ -153,29 +153,29 @@ npm run build
 npm run preview
 ```
 
-`vite preview` cũng proxy `/api` tới `http://127.0.0.1:5000` — vẫn cần Flask đang chạy.
+`vite preview` also proxies `/api` to `http://127.0.0.1:5000` — Flask must still be running.
 
 ---
 
-## Checklist khởi động nhanh
+## Quick start checklist
 
-1. [ ] Cài Python deps trong `cron-data` (venv + `requirements.txt`)
-2. [ ] (Tuỳ chọn) Copy `.env.example` → `.env`
-3. [ ] Chạy `python run.py` trong `cron-data`
-4. [ ] Cài npm deps trong `fe` (`npm install`)
-5. [ ] Chạy `npm run dev` trong `fe`
-6. [ ] Mở `http://127.0.0.1:5173/`
+1. [ ] Install Python deps in `cron-data` (venv + `requirements.txt`)
+2. [ ] (Optional) Copy `.env.example` → `.env`
+3. [ ] Run `python run.py` in `cron-data`
+4. [ ] Install npm deps in `fe` (`npm install`)
+5. [ ] Run `npm run dev` in `fe`
+6. [ ] Open `http://127.0.0.1:5173/`
 
-## Lỗi thường gặp
+## Common issues
 
-| Hiện tượng | Nguyên nhân / cách xử lý |
+| Symptom | Cause / fix |
 | --- | --- |
-| FE báo lỗi gọi `/api/...` | Flask chưa chạy, hoặc không lắng nghe `:5000` |
-| Port 5000 đã dùng | Đổi `WEATHER_API_PORT` trong `.env` **và** cập nhật target proxy trong `fe/middleware/api-proxy.js` |
-| Activate venv bị chặn (Windows) | Gọi trực tiếp `.venv\Scripts\python.exe run.py` |
-| Docker FE không gọi được API | FE local proxy tới `127.0.0.1:5000`; nếu API trong Docker trên Mac/Windows thường map `-p 5000:5000` là đủ |
+| FE fails calling `/api/...` | Flask is not running, or not listening on `:5000` |
+| Port 5000 already in use | Change `WEATHER_API_PORT` in `.env` **and** update the proxy target in `fe/middleware/api-proxy.js` |
+| venv activate blocked (Windows) | Run `.venv\Scripts\python.exe run.py` directly |
+| FE cannot reach Dockerized API | Local FE proxies to `127.0.0.1:5000`; mapping `-p 5000:5000` is usually enough on Mac/Windows |
 
-## Tài liệu chi tiết theo package
+## Package docs
 
 - [`cron-data/README.md`](cron-data/README.md) — API params, architecture, Docker
-- [`fe/README.md`](fe/README.md) — Preact dashboard, proxy Vite
+- [`fe/README.md`](fe/README.md) — Preact dashboard, Vite proxy
