@@ -1,0 +1,88 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Weather Forecast API",
+    "description": "Backend API for retrieving the current, hourly, and daily Open-Meteo forecast for Da Nang.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/v1/weather": {
+      "get": {
+        "summary": "Get the current weather forecast",
+        "description": "Fetches the configured forecast from Open-Meteo and returns the provider payload.",
+        "operationId": "getWeatherForecast",
+        "responses": {
+          "200": {
+            "description": "Forecast retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherForecast"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The weather provider returned an error or an invalid response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The weather provider timed out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "WeatherForecast": {
+        "type": "object",
+        "required": ["current", "hourly", "daily"],
+        "properties": {
+          "latitude": { "type": "number", "example": 16.063269 },
+          "longitude": { "type": "number", "example": 108.23864 },
+          "timezone": { "type": "string", "example": "Asia/Bangkok" },
+          "current": { "type": "object", "additionalProperties": true },
+          "hourly": { "type": "object", "additionalProperties": true },
+          "daily": { "type": "object", "additionalProperties": true }
+        },
+        "additionalProperties": true
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": ["UPSTREAM_TIMEOUT", "UPSTREAM_ERROR", "INVALID_UPSTREAM_RESPONSE"]
+              },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

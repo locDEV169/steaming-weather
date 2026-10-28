@@ -1,0 +1,1 @@
+"""Fetch and export Open-Meteo forecast data."""
