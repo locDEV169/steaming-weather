@@ -32,6 +32,7 @@ Project dùng các tham số API sau:
 
 - Tọa độ trung tâm Đà Nẵng: latitude `16.0544`, longitude `108.2022`.
 - Timezone: `Asia/Bangkok` (GMT+7), cùng múi giờ với Việt Nam.
+- Cửa sổ thời gian: `past_days=7`, `forecast_days=7` (7 ngày quá khứ dạng archived forecast + 7 ngày dự báo).
 - Hiện tại: `weather_code`, `temperature_2m`.
 - Theo giờ: `temperature_2m`, `weather_code`.
 - Theo ngày: `weather_code`, `sunrise`, `rain_sum`, `sunset`, `temperature_2m_max`, `temperature_2m_min`.
@@ -90,7 +91,10 @@ CSV dùng UTF-8 BOM để mở thuận tiện bằng Excel. Mỗi lần chạy s
 
 ## HTTP API cho backend
 
-API cung cấp endpoint `GET /api/v1/weather`. Mỗi request gọi Open-Meteo trực tiếp qua `weather/api.py` và trả payload JSON gồm `current`, `hourly`, `daily` cùng metadata. Endpoint không đọc snapshot từ `data/open_meteo.json` và hiện chưa ghi lại file CSV/JSON.
+API cung cấp:
+
+- `GET /api/v1/weather` — mỗi request gọi Open-Meteo trực tiếp qua `weather/api.py` và trả payload JSON gồm `current`, `hourly`, `daily` cùng metadata. Endpoint không đọc snapshot từ `data/open_meteo.json` và hiện chưa ghi lại file CSV/JSON.
+- `GET /api/v1/weather-rainny-forecast` — series lượng mưa theo ngày (past + current + future) để FE chart. Không cần query param; server lấy `as_of` theo `Asia/Bangkok`. Mỗi phần tử có `date`, `rain_sum`, và `kind` (`past` | `current` | `future`).
 
 Chạy development server trong thư mục `cron-data`:
 

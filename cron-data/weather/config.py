@@ -10,6 +10,8 @@ PARAMS = {
     "hourly": "temperature_2m,weather_code",
     "current": "weather_code,temperature_2m",
     "timezone": "Asia/Bangkok",
+    "forecast_days": 7,
+    "past_days": 7,
 }
 
 CURRENT_COLUMNS = ["time", "interval", "temperature_2m", "weather_code"]

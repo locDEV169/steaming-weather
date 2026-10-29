@@ -74,6 +74,70 @@
           }
         }
       }
+    },
+    "/api/v1/weather-rainny-forecast": {
+      "get": {
+        "summary": "Get daily rainfall series for charting",
+        "description": "Returns past, current, and future daily rain_sum values for Da Nang. The server derives as_of in Asia/Bangkok; no query params are required. Each day includes kind: past, current, or future. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
+        "operationId": "getWeatherRainny",
+        "security": [
+          {},
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rainfall series retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherRainny"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key when WEATHER_API_KEY is configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The weather provider returned an error or an invalid response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The weather provider timed out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -101,6 +165,40 @@
           "daily": { "type": "object", "additionalProperties": true }
         },
         "additionalProperties": true
+      },
+      "WeatherRainnyDay": {
+        "type": "object",
+        "required": ["date", "rain_sum", "kind"],
+        "properties": {
+          "date": { "type": "string", "format": "date", "example": "2026-10-29" },
+          "rain_sum": { "type": "number", "example": 3.1 },
+          "kind": {
+            "type": "string",
+            "enum": ["past", "current", "future"],
+            "example": "current"
+          }
+        }
+      },
+      "WeatherRainny": {
+        "type": "object",
+        "required": ["location", "timezone", "as_of", "unit", "days"],
+        "properties": {
+          "location": {
+            "type": "object",
+            "required": ["latitude", "longitude"],
+            "properties": {
+              "latitude": { "type": "number", "example": 16.0544 },
+              "longitude": { "type": "number", "example": 108.2022 }
+            }
+          },
+          "timezone": { "type": "string", "example": "Asia/Bangkok" },
+          "as_of": { "type": "string", "format": "date", "example": "2026-10-29" },
+          "unit": { "type": "string", "example": "mm" },
+          "days": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WeatherRainnyDay" }
+          }
+        }
       },
       "ApiErrorResponse": {
         "type": "object",

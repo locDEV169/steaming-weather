@@ -22,6 +22,8 @@ def test_request_uses_configured_open_meteo_parameters():
     )
     assert PARAMS["latitude"] == 16.0544
     assert PARAMS["longitude"] == 108.2022
+    assert PARAMS["past_days"] == 7
+    assert PARAMS["forecast_days"] == 7
     assert payload["current"] == {}
     assert payload["hourly"] == {}
     assert payload["daily"] == {}
