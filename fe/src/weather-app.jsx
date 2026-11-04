@@ -6,13 +6,13 @@ import { PageShell } from "./components/weather/PageShell.jsx";
 import { RainForecastSection } from "./components/weather/RainForecastSection.jsx";
 import { TopbarMeta } from "./components/weather/TopbarMeta.jsx";
 import {
-  fetchAirQuality,
-  fetchForecast,
-  fetchRainnyForecast,
-} from "./api/weather.js";
+  fetchAirQualityFromSupabase,
+  fetchForecastFromSupabase,
+  fetchRainnyFromSupabase,
+} from "./api/weather-supabase.js";
 
-const LOAD_HINT =
-  " Hãy chạy Flask API (cron-data: python run.py) và Vite (fe: pnpm run dev).";
+const SUPABASE_LOAD_HINT =
+  " Hãy kiểm tra VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY và đã POST /api/v1/ingest.";
 
 export function App() {
   const [forecast, setForecast] = useState(null);
@@ -26,11 +26,11 @@ export function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetchForecast(controller.signal)
+    fetchForecastFromSupabase(controller.signal)
       .then(setForecast)
       .catch((loadError) => {
         if (loadError.name !== "AbortError") {
-          setError(`${loadError.message}${LOAD_HINT}`);
+          setError(`${loadError.message}${SUPABASE_LOAD_HINT}`);
         }
       });
 
@@ -40,11 +40,11 @@ export function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetchRainnyForecast(controller.signal)
+    fetchRainnyFromSupabase(controller.signal)
       .then(setRainny)
       .catch((loadError) => {
         if (loadError.name !== "AbortError") {
-          setRainError(`${loadError.message}${LOAD_HINT}`);
+          setRainError(`${loadError.message}${SUPABASE_LOAD_HINT}`);
         }
       });
 
@@ -54,11 +54,11 @@ export function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetchAirQuality(controller.signal)
+    fetchAirQualityFromSupabase(controller.signal)
       .then(setAirQuality)
       .catch((loadError) => {
         if (loadError.name !== "AbortError") {
-          setAqError(`${loadError.message}${LOAD_HINT}`);
+          setAqError(`${loadError.message}${SUPABASE_LOAD_HINT}`);
         }
       });
 
@@ -86,6 +86,7 @@ export function App() {
       overviewSummary = <CurrentWeatherSummary data={forecast} />;
     }
   }
+  console.log("forecast", { forecast });
 
   return (
     <main class="weather-page">
