@@ -12,10 +12,12 @@ cron-data/
 │   ├── __init__.py                   # Application factory (create_app)
 │   ├── config.py                     # Host/port, CORS, API key, Supabase env
 │   ├── common/                       # CORS, logging, errors, optional auth
-│   ├── static/swagger.json           # OpenAPI cho /api/docs
+│   ├── openapi/                      # Shared OpenAPI sources (root + components)
+│   ├── static/swagger.json           # Assembled OpenAPI cho /api/docs (do not edit by hand)
 │   └── modules/
 │       └── weather/                  # Weather module
 │           ├── __init__.py           # Export blueprint
+│           ├── openapi/              # Module OpenAPI paths + schemas
 │           ├── routes/               # URL + HTTP method
 │           ├── controllers/          # HTTP response/error mapping
 │           ├── services/             # Use cases: forecast, rainny, AQ, ingest
@@ -27,6 +29,7 @@ cron-data/
 │               └── storage.py
 ├── supabase/migrations/              # SQL schema (local migrate hoặc SQL Editor)
 ├── scripts/migrate.py                # Apply SQL qua psql + DATABASE_URL
+├── scripts/assemble_openapi.py       # Merge OpenAPI fragments → static/swagger.json
 ├── tests/                            # Pytest
 ├── data/                             # JSON/CSV tạo bởi CLI (gitignore)
 ├── .env.example
@@ -42,12 +45,26 @@ cron-data/
 | --- | --- |
 | `app/` | Factory + config + static |
 | `app/common/` | Cross-cutting HTTP middleware |
+| `app/openapi/` | Shared OpenAPI root (`info`/`servers`) + `securitySchemes` / `ApiErrorResponse` |
+| `app/modules/<name>/openapi/` | Paths (+ optional schemas) của module; source of truth khi sửa docs |
+| `app/static/swagger.json` | Artifact assemble; Swagger UI đọc file này |
 | `app/modules/weather/` | routes → controllers → services → repositories |
 | `app/modules/weather/provider/` | Gọi Open-Meteo, transform, lưu file CLI |
 | `supabase/` | Migration SQL cho bảng `weather_snapshots` (latest-only jsonb) |
 | `scripts/migrate.py` | Apply migration từ local (`psql` + `DATABASE_URL`) |
+| `scripts/assemble_openapi.py` | Ghép fragments → `app/static/swagger.json` |
 | `tests/` | Pytest cho API, domain, ingest |
 | `app/modules/weather/models/` | TypedDict / contract response; **không** SQLAlchemy |
+
+### OpenAPI (multi-module)
+
+Sửa docs ở fragment, rồi assemble (từ `cron-data/`):
+
+```powershell
+python scripts/assemble_openapi.py
+```
+
+Thêm module mới: tạo `app/modules/<name>/openapi/paths.json` (+ `schemas.json` nếu cần) → chạy assemble → commit cả fragments và `app/static/swagger.json`. Không sửa tay file static khi đã có fragment.
 
 Snapshot Supabase là persistence tùy chọn qua `POST /api/v1/ingest`. GET live vẫn gọi Open-Meteo trực tiếp và không đọc `data/` hay DB.
 

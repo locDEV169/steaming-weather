@@ -1,0 +1,13 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Weather Forecast API",
+    "description": "Backend API for retrieving the current, hourly, and daily Open-Meteo forecast for Da Nang.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}

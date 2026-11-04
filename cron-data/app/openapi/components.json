@@ -1,0 +1,51 @@
+{
+  "securitySchemes": {
+    "ApiKeyAuth": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "X-API-Key"
+    },
+    "BearerAuth": {
+      "type": "http",
+      "scheme": "bearer"
+    }
+  },
+  "schemas": {
+    "ApiErrorResponse": {
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": [
+            "code",
+            "message"
+          ],
+          "properties": {
+            "code": {
+              "type": "string",
+              "enum": [
+                "UNAUTHORIZED",
+                "NOT_FOUND",
+                "METHOD_NOT_ALLOWED",
+                "INTERNAL_ERROR",
+                "UPSTREAM_TIMEOUT",
+                "UPSTREAM_ERROR",
+                "INVALID_UPSTREAM_RESPONSE",
+                "INGEST_AUTH_REQUIRED",
+                "SUPABASE_NOT_CONFIGURED",
+                "INGEST_FAILED",
+                "SUPABASE_WRITE_ERROR"
+              ]
+            },
+            "message": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}
