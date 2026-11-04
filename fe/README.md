@@ -38,6 +38,8 @@ pnpm run dev
 
 Mở URL Vite hiển thị trong terminal (thường là `http://127.0.0.1:5173/`). Vite proxy `/api` tới Flask nên FE gọi `/api/v1/weather`, `/api/v1/weather-rainny-forecast` và `/api/v1/air-quality` cùng origin.
 
+Khi `cron-data` bật `WEATHER_API_KEY`, copy `fe/.env.example` → `fe/.env` và đặt cùng giá trị vào `VITE_WEATHER_API_KEY`. FE gửi `Authorization: Bearer <key>` trên các GET trên. Restart `pnpm run dev` sau khi đổi `.env`.
+
 ## Build + preview
 
 ```bash

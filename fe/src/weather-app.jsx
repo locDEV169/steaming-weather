@@ -11,6 +11,7 @@ import {
   RAINNY_URL,
   isAirQualityPayload,
   isRainnyPayload,
+  weatherFetchInit,
 } from "./lib/weather.js";
 
 export function App() {
@@ -25,7 +26,10 @@ export function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(DATA_URL, { cache: "no-store", signal: controller.signal })
+    fetch(
+      DATA_URL,
+      weatherFetchInit({ cache: "no-store", signal: controller.signal }),
+    )
       .then((response) => {
         if (!response.ok)
           throw new Error(
@@ -59,7 +63,10 @@ export function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(RAINNY_URL, { cache: "no-store", signal: controller.signal })
+    fetch(
+      RAINNY_URL,
+      weatherFetchInit({ cache: "no-store", signal: controller.signal }),
+    )
       .then((response) => {
         if (!response.ok)
           throw new Error(
@@ -89,7 +96,10 @@ export function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(AIR_QUALITY_URL, { cache: "no-store", signal: controller.signal })
+    fetch(
+      AIR_QUALITY_URL,
+      weatherFetchInit({ cache: "no-store", signal: controller.signal }),
+    )
       .then((response) => {
         if (!response.ok)
           throw new Error(

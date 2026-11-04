@@ -2,6 +2,17 @@ export const DATA_URL = "/api/v1/weather";
 export const RAINNY_URL = "/api/v1/weather-rainny-forecast";
 export const AIR_QUALITY_URL = "/api/v1/air-quality";
 
+const weatherApiKey = (import.meta.env.VITE_WEATHER_API_KEY || "").trim();
+
+/** Shared fetch options for /api/v1/* — Bearer only when VITE_WEATHER_API_KEY is set. */
+export function weatherFetchInit(init = {}) {
+  const headers = new Headers(init.headers);
+  if (weatherApiKey) {
+    headers.set("Authorization", `Bearer ${weatherApiKey}`);
+  }
+  return { ...init, headers };
+}
+
 const AQ_BAND_CODES = new Set([
   "good",
   "fair",
