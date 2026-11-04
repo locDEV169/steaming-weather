@@ -160,17 +160,17 @@ export function App() {
         }
         summary={overviewSummary}
       />
+      <AirQualitySection
+        airQuality={airQuality}
+        loading={aqLoading}
+        error={aqError}
+      />
       <ForecastSection
         forecast={forecast}
         mode={mode}
         setMode={setMode}
         loading={loading}
         error={error}
-      />
-      <AirQualitySection
-        airQuality={airQuality}
-        loading={aqLoading}
-        error={aqError}
       />
       <RainForecastSection
         rainny={rainny}
