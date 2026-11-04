@@ -6,13 +6,13 @@ import { PageShell } from "./components/weather/PageShell.jsx";
 import { RainForecastSection } from "./components/weather/RainForecastSection.jsx";
 import { TopbarMeta } from "./components/weather/TopbarMeta.jsx";
 import {
-  AIR_QUALITY_URL,
-  DATA_URL,
-  RAINNY_URL,
-  isAirQualityPayload,
-  isRainnyPayload,
-  weatherFetchInit,
-} from "./lib/weather.js";
+  fetchAirQuality,
+  fetchForecast,
+  fetchRainnyForecast,
+} from "./api/weather.js";
+
+const LOAD_HINT =
+  " Hãy chạy Flask API (cron-data: python run.py) và Vite (fe: pnpm run dev).";
 
 export function App() {
   const [forecast, setForecast] = useState(null);
@@ -26,34 +26,11 @@ export function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(
-      DATA_URL,
-      weatherFetchInit({ cache: "no-store", signal: controller.signal }),
-    )
-      .then((response) => {
-        if (!response.ok)
-          throw new Error(
-            `Không tải được dữ liệu dự báo (HTTP ${response.status}).`,
-          );
-        return response.json();
-      })
-      .then((data) => {
-        if (
-          !data.current ||
-          !data.hourly?.time?.length ||
-          !data.daily?.time?.length
-        ) {
-          throw new Error(
-            "Phản hồi API thiếu các phần current, hourly hoặc daily.",
-          );
-        }
-        setForecast(data);
-      })
+    fetchForecast(controller.signal)
+      .then(setForecast)
       .catch((loadError) => {
         if (loadError.name !== "AbortError") {
-          setError(
-            `${loadError.message} Hãy chạy Flask API (cron-data: python run.py) và Vite (fe: pnpm run dev).`,
-          );
+          setError(`${loadError.message}${LOAD_HINT}`);
         }
       });
 
@@ -63,30 +40,11 @@ export function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(
-      RAINNY_URL,
-      weatherFetchInit({ cache: "no-store", signal: controller.signal }),
-    )
-      .then((response) => {
-        if (!response.ok)
-          throw new Error(
-            `Không tải được dữ liệu lượng mưa (HTTP ${response.status}).`,
-          );
-        return response.json();
-      })
-      .then((data) => {
-        if (!isRainnyPayload(data)) {
-          throw new Error(
-            "Phản hồi API lượng mưa thiếu days hoặc kind không hợp lệ.",
-          );
-        }
-        setRainny(data);
-      })
+    fetchRainnyForecast(controller.signal)
+      .then(setRainny)
       .catch((loadError) => {
         if (loadError.name !== "AbortError") {
-          setRainError(
-            `${loadError.message} Hãy chạy Flask API (cron-data: python run.py) và Vite (fe: pnpm run dev).`,
-          );
+          setRainError(`${loadError.message}${LOAD_HINT}`);
         }
       });
 
@@ -96,30 +54,11 @@ export function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(
-      AIR_QUALITY_URL,
-      weatherFetchInit({ cache: "no-store", signal: controller.signal }),
-    )
-      .then((response) => {
-        if (!response.ok)
-          throw new Error(
-            `Không tải được chất lượng không khí (HTTP ${response.status}).`,
-          );
-        return response.json();
-      })
-      .then((data) => {
-        if (!isAirQualityPayload(data)) {
-          throw new Error(
-            "Phản hồi API không khí thiếu results.summary hoặc overall.index.",
-          );
-        }
-        setAirQuality(data);
-      })
+    fetchAirQuality(controller.signal)
+      .then(setAirQuality)
       .catch((loadError) => {
         if (loadError.name !== "AbortError") {
-          setAqError(
-            `${loadError.message} Hãy chạy Flask API (cron-data: python run.py) và Vite (fe: pnpm run dev).`,
-          );
+          setAqError(`${loadError.message}${LOAD_HINT}`);
         }
       });
 
