@@ -86,7 +86,6 @@ export function App() {
       overviewSummary = <CurrentWeatherSummary data={forecast} />;
     }
   }
-  console.log("forecast", { forecast });
 
   return (
     <main class="weather-page">
