@@ -1,7 +1,7 @@
 """Unit tests for weather-rainny series shaping."""
 
 import pytest
-from app.modules.weather.weather_service import build_weather_rainny
+from app.modules.weather.services.weather_service import build_weather_rainny
 
 
 def test_build_weather_rainny_labels_past_current_future():

@@ -6,6 +6,13 @@ from app import create_app
 
 @pytest.fixture
 def client():
-    # Override .env so local WEATHER_API_KEY does not flip default-auth tests.
-    app = create_app({"TESTING": True, "WEATHER_API_KEY": ""})
+    # Override .env so local secrets do not change default test assumptions.
+    app = create_app(
+        {
+            "TESTING": True,
+            "WEATHER_API_KEY": "",
+            "SUPABASE_URL": "",
+            "SUPABASE_SERVICE_ROLE_KEY": "",
+        }
+    )
     return app.test_client()

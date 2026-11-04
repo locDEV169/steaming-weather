@@ -139,6 +139,79 @@
         }
       }
     },
+    "/api/v1/snapshots/{slug}": {
+      "get": {
+        "summary": "Get a persisted Supabase weather snapshot",
+        "description": "Reads the latest weather_snapshots row for the configured location and returns its payload only (same shape as the matching live endpoint). Slug is weather | rainny | air-quality. Does not call Open-Meteo. Requires prior POST /api/v1/ingest. API key auth is optional when WEATHER_API_KEY is set.",
+        "operationId": "getWeatherSnapshot",
+        "security": [
+          {},
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["weather", "rainny", "air-quality"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Snapshot payload returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "additionalProperties": true }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid snapshot slug.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key when WEATHER_API_KEY is configured.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "No snapshot row for that kind/location.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "502": {
+            "description": "Supabase read failed.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "503": {
+            "description": "Supabase is not configured.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ingest": {
       "post": {
         "summary": "Ingest shaped snapshots into Supabase",

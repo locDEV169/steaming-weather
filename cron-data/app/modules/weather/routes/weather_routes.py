@@ -2,10 +2,11 @@
 
 from flask import Blueprint
 
-from app.modules.weather.handlers import (
+from app.modules.weather.controllers import (
     get_weather_air_quality,
     get_weather_forecast,
     get_weather_rainny_forecast,
+    get_weather_snapshot,
     post_weather_ingest,
 )
 
@@ -25,6 +26,11 @@ def get_weather_rainny():
 @weather_blueprint.get("/api/v1/air-quality")
 def get_air_quality():
     return get_weather_air_quality()
+
+
+@weather_blueprint.get("/api/v1/snapshots/<slug>")
+def get_snapshot(slug: str):
+    return get_weather_snapshot(slug)
 
 
 @weather_blueprint.post("/api/v1/ingest")

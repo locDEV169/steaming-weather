@@ -3,13 +3,26 @@
 import requests
 from flask import current_app, jsonify
 
-from app.modules.weather.ingest_service import run_ingest
-from app.modules.weather.repository import SupabaseConfigError
-from app.modules.weather.weather_service import (
+from app.modules.weather.repositories import (
+    SNAPSHOT_KINDS,
+    SnapshotNotFoundError,
+    SupabaseConfigError,
+    SupabaseReadError,
+    get_snapshot,
+)
+from app.modules.weather.services.ingest_service import run_ingest
+from app.modules.weather.services.weather_service import (
     fetch_forecast,
     get_air_quality,
     get_weather_rainny,
 )
+
+# URL slug → DB kind for GET /api/v1/snapshots/<slug>
+SNAPSHOT_SLUGS = {
+    "weather": "weather",
+    "rainny": "rainny",
+    "air-quality": "air_quality",
+}
 
 
 def get_weather_forecast():
@@ -117,6 +130,58 @@ def get_weather_air_quality():
         )
 
 
+def get_weather_snapshot(slug: str):
+    """Return stored Supabase snapshot payload for a kind slug."""
+    kind = SNAPSHOT_SLUGS.get(slug)
+    if kind is None or kind not in SNAPSHOT_KINDS:
+        return (
+            jsonify(
+                error={
+                    "code": "INVALID_SNAPSHOT_KIND",
+                    "message": (
+                        "Snapshot kind must be one of: weather, rainny, air-quality."
+                    ),
+                }
+            ),
+            400,
+        )
+
+    try:
+        return jsonify(get_snapshot(kind))
+    except SupabaseConfigError:
+        return (
+            jsonify(
+                error={
+                    "code": "SUPABASE_NOT_CONFIGURED",
+                    "message": (
+                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
+                    ),
+                }
+            ),
+            503,
+        )
+    except SnapshotNotFoundError:
+        return (
+            jsonify(
+                error={
+                    "code": "SNAPSHOT_NOT_FOUND",
+                    "message": f"No snapshot found for kind '{slug}'.",
+                }
+            ),
+            404,
+        )
+    except SupabaseReadError:
+        return (
+            jsonify(
+                error={
+                    "code": "SUPABASE_READ_ERROR",
+                    "message": "Failed to read snapshot from Supabase.",
+                }
+            ),
+            502,
+        )
+
+
 def post_weather_ingest():
     api_key = (current_app.config.get("WEATHER_API_KEY") or "").strip()
     if not api_key:
@@ -124,26 +189,21 @@ def post_weather_ingest():
             jsonify(
                 error={
                     "code": "INGEST_AUTH_REQUIRED",
-                    "message": (
-                        "Set WEATHER_API_KEY before using /api/v1/ingest."
-                    ),
+                    "message": ("Set WEATHER_API_KEY before using /api/v1/ingest."),
                 }
             ),
             503,
         )
 
     supabase_url = (current_app.config.get("SUPABASE_URL") or "").strip()
-    service_key = (
-        current_app.config.get("SUPABASE_SERVICE_ROLE_KEY") or ""
-    ).strip()
+    service_key = (current_app.config.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
     if not supabase_url or not service_key:
         return (
             jsonify(
                 error={
                     "code": "SUPABASE_NOT_CONFIGURED",
                     "message": (
-                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY "
-                        "must be configured."
+                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
                     ),
                 }
             ),
@@ -158,8 +218,7 @@ def post_weather_ingest():
                 error={
                     "code": "SUPABASE_NOT_CONFIGURED",
                     "message": (
-                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY "
-                        "must be configured."
+                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
                     ),
                 }
             ),

@@ -68,11 +68,11 @@ def test_ingest_updates_all_kinds(client, monkeypatch):
     }
 
     monkeypatch.setattr(
-        "app.modules.weather.ingest_service.fetch_forecast",
+        "app.modules.weather.services.ingest_service.fetch_forecast",
         lambda: forecast,
     )
     monkeypatch.setattr(
-        "app.modules.weather.ingest_service.fetch_air_quality",
+        "app.modules.weather.services.ingest_service.fetch_air_quality",
         lambda: air_payload,
     )
 
@@ -87,7 +87,7 @@ def test_ingest_updates_all_kinds(client, monkeypatch):
         }
 
     monkeypatch.setattr(
-        "app.modules.weather.ingest_service.upsert_snapshot",
+        "app.modules.weather.services.ingest_service.upsert_snapshot",
         fake_upsert,
     )
 
@@ -124,7 +124,7 @@ def test_ingest_partial_success_when_air_quality_fails(client, monkeypatch):
         "timezone": "Asia/Bangkok",
     }
     monkeypatch.setattr(
-        "app.modules.weather.ingest_service.fetch_forecast",
+        "app.modules.weather.services.ingest_service.fetch_forecast",
         lambda: forecast,
     )
 
@@ -132,11 +132,11 @@ def test_ingest_partial_success_when_air_quality_fails(client, monkeypatch):
         raise requests.Timeout
 
     monkeypatch.setattr(
-        "app.modules.weather.ingest_service.fetch_air_quality",
+        "app.modules.weather.services.ingest_service.fetch_air_quality",
         raise_timeout,
     )
     monkeypatch.setattr(
-        "app.modules.weather.ingest_service.upsert_snapshot",
+        "app.modules.weather.services.ingest_service.upsert_snapshot",
         lambda kind, payload, fetched_at=None: {
             "kind": kind,
             "fetched_at": "2026-11-04T04:00:00+00:00",

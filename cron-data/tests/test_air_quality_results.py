@@ -1,7 +1,7 @@
 """Tests for European AQI overall band mapping."""
 
 import pytest
-from app.modules.weather.weather_service import (
+from app.modules.weather.services.weather_service import (
     BAND_TABLE_VERSION,
     build_air_quality,
     european_aqi_band,

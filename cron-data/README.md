@@ -14,14 +14,13 @@ cron-data/
 │   ├── common/                       # CORS, logging, errors, optional auth
 │   ├── static/swagger.json           # OpenAPI cho /api/docs
 │   └── modules/
-│       └── weather/                  # Vertical weather module
+│       └── weather/                  # Weather module
 │           ├── __init__.py           # Export blueprint
-│           ├── routes.py             # URL + HTTP method
-│           ├── handlers.py           # HTTP response/error mapping
-│           ├── weather_service.py    # Use cases: forecast, rainny, AQ
-│           ├── ingest_service.py     # Snapshot ingest orchestration
-│           ├── repository.py         # Supabase PostgREST upsert
-│           ├── models.py             # Typed response contract (không ORM)
+│           ├── routes/               # URL + HTTP method
+│           ├── controllers/          # HTTP response/error mapping
+│           ├── services/             # Use cases: forecast, rainny, AQ, ingest
+│           ├── repositories/         # Supabase PostgREST upsert/read
+│           ├── models/               # Typed response contract (không ORM)
 │           └── provider/             # Open-Meteo client + CLI export
 │               ├── api.py / air_quality.py
 │               ├── config.py / transform.py
@@ -43,12 +42,12 @@ cron-data/
 | --- | --- |
 | `app/` | Factory + config + static |
 | `app/common/` | Cross-cutting HTTP middleware |
-| `app/modules/weather/` | Routes → handlers → services → repository |
+| `app/modules/weather/` | routes → controllers → services → repositories |
 | `app/modules/weather/provider/` | Gọi Open-Meteo, transform, lưu file CLI |
 | `supabase/` | Migration SQL cho bảng `weather_snapshots` (latest-only jsonb) |
 | `scripts/migrate.py` | Apply migration từ local (`psql` + `DATABASE_URL`) |
 | `tests/` | Pytest cho API, domain, ingest |
-| `app/modules/weather/models.py` | TypedDict / contract response; **không** SQLAlchemy |
+| `app/modules/weather/models/` | TypedDict / contract response; **không** SQLAlchemy |
 
 Snapshot Supabase là persistence tùy chọn qua `POST /api/v1/ingest`. GET live vẫn gọi Open-Meteo trực tiếp và không đọc `data/` hay DB.
 
@@ -131,6 +130,7 @@ API cung cấp:
 - `GET /api/v1/weather-rainny-forecast` — series lượng mưa theo ngày (past + current + future) để FE chart. Không cần query param; server lấy `as_of` theo `Asia/Bangkok`. Mỗi phần tử có `date`, `rain_sum`, và `kind` (`past` | `current` | `future`).
 - `GET /api/v1/air-quality` — mỗi request gọi Open-Meteo Air Quality API và trả payload upstream (European AQI + pollutants hiện tại cho Đà Nẵng) kèm `results.overall` (band từ `european_aqi`, bảng Open-Meteo/EEA 2024) và `results.summary` (nhãn/ý nghĩa song ngữ VI+EN để FE hiển thị). Không dùng US AQI; chưa có đánh giá từng pollutant. Text summary mang tính thông tin UI, không phải tư vấn y tế.
 - `POST /api/v1/ingest` — fetch + shape weather/rainny/air_quality rồi upsert vào Supabase (`weather_snapshots`). Cần `WEATHER_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Cron chưa gắn; gọi tay để seed. Partial update từng kind được phép.
+- `GET /api/v1/snapshots/{weather|rainny|air-quality}` — đọc snapshot đã ingest từ Supabase và trả **payload** (cùng shape với live GET tương ứng). Không gọi Open-Meteo. 404 nếu chưa có row; cần `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
 
 ### Seed data lên Supabase (no-cron MVP)
 
@@ -157,6 +157,14 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5000/api/v1/ingest -Headers
 
 ```bash
 curl -X POST http://127.0.0.1:5000/api/v1/ingest -H "X-API-Key: your-local-key"
+```
+
+Đọc snapshot sau khi ingest (không cần API key nếu `WEATHER_API_KEY` trống):
+
+```bash
+curl http://127.0.0.1:5000/api/v1/snapshots/weather
+curl http://127.0.0.1:5000/api/v1/snapshots/rainny
+curl http://127.0.0.1:5000/api/v1/snapshots/air-quality
 ```
 
 Chạy development server trong thư mục `cron-data`:

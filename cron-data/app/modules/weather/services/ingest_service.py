@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 import requests
 
 from app.modules.weather.provider.air_quality import fetch_air_quality
-from app.modules.weather.repository import upsert_snapshot
-from app.modules.weather.weather_service import (
+from app.modules.weather.repositories import upsert_snapshot
+from app.modules.weather.services.weather_service import (
     build_air_quality,
     build_weather_rainny,
     fetch_forecast,
@@ -17,7 +17,7 @@ from app.modules.weather.weather_service import (
 
 def run_ingest() -> dict:
     """Ingest weather, rainny, and air_quality independently (partial OK)."""
-    fetched_at = datetime.now(timezone.utc)
+    fetched_at = datetime.now(timezone.utc)  # noqa: UP017
     results: dict[str, dict] = {}
 
     forecast = None
@@ -83,7 +83,7 @@ def run_ingest() -> dict:
 
 
 def _persist_or_unexpected_failure(exc: Exception) -> dict:
-    from app.modules.weather.repository import (
+    from app.modules.weather.repositories import (
         SupabaseConfigError,
         SupabaseWriteError,
     )

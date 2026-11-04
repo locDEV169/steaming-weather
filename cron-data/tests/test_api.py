@@ -10,7 +10,7 @@ def test_weather_route_returns_forecast_payload(client, monkeypatch):
         "daily": {"time": ["2026-10-28"]},
     }
     monkeypatch.setattr(
-        "app.modules.weather.handlers.fetch_forecast", lambda: payload
+        "app.modules.weather.controllers.weather.fetch_forecast", lambda: payload
     )
     response = client.get("/api/v1/weather")
 
@@ -24,7 +24,7 @@ def test_weather_route_maps_timeout_to_504(client, monkeypatch):
         raise requests.Timeout
 
     monkeypatch.setattr(
-        "app.modules.weather.handlers.fetch_forecast", raise_timeout
+        "app.modules.weather.controllers.weather.fetch_forecast", raise_timeout
     )
     response = client.get("/api/v1/weather")
 
@@ -37,7 +37,7 @@ def test_weather_route_maps_upstream_error_to_502(client, monkeypatch):
         raise requests.HTTPError("sensitive upstream detail")
 
     monkeypatch.setattr(
-        "app.modules.weather.handlers.fetch_forecast", raise_http_error
+        "app.modules.weather.controllers.weather.fetch_forecast", raise_http_error
     )
     response = client.get("/api/v1/weather")
 
@@ -51,7 +51,7 @@ def test_weather_route_maps_invalid_response_to_502(client, monkeypatch):
         raise TypeError("invalid internal response")
 
     monkeypatch.setattr(
-        "app.modules.weather.handlers.fetch_forecast", raise_invalid_response
+        "app.modules.weather.controllers.weather.fetch_forecast", raise_invalid_response
     )
     response = client.get("/api/v1/weather")
 
@@ -79,6 +79,7 @@ def test_swagger_docs_and_openapi_definition_are_available(client):
     assert "/api/v1/weather" in paths
     assert "/api/v1/weather-rainny-forecast" in paths
     assert "/api/v1/air-quality" in paths
+    assert "/api/v1/snapshots/{slug}" in paths
     assert "/api/v1/ingest" in paths
 
 
@@ -111,7 +112,7 @@ def test_air_quality_route_returns_provider_payload_with_results(client, monkeyp
         },
     }
     monkeypatch.setattr(
-        "app.modules.weather.handlers.get_air_quality",
+        "app.modules.weather.controllers.weather.get_air_quality",
         lambda: payload,
     )
     response = client.get("/api/v1/air-quality")
@@ -129,7 +130,7 @@ def test_air_quality_route_maps_timeout_to_504(client, monkeypatch):
         raise requests.Timeout
 
     monkeypatch.setattr(
-        "app.modules.weather.handlers.get_air_quality",
+        "app.modules.weather.controllers.weather.get_air_quality",
         raise_timeout,
     )
     response = client.get("/api/v1/air-quality")
@@ -143,7 +144,7 @@ def test_air_quality_route_maps_upstream_error_to_502(client, monkeypatch):
         raise requests.HTTPError("sensitive upstream detail")
 
     monkeypatch.setattr(
-        "app.modules.weather.handlers.get_air_quality",
+        "app.modules.weather.controllers.weather.get_air_quality",
         raise_http_error,
     )
     response = client.get("/api/v1/air-quality")
@@ -158,7 +159,7 @@ def test_air_quality_route_maps_invalid_response_to_502(client, monkeypatch):
         raise ValueError("missing european_aqi")
 
     monkeypatch.setattr(
-        "app.modules.weather.handlers.get_air_quality",
+        "app.modules.weather.controllers.weather.get_air_quality",
         raise_invalid_response,
     )
     response = client.get("/api/v1/air-quality")
@@ -181,7 +182,7 @@ def test_weather_rainny_route_returns_labeled_series(client, monkeypatch):
         ],
     }
     monkeypatch.setattr(
-        "app.modules.weather.handlers.get_weather_rainny",
+        "app.modules.weather.controllers.weather.get_weather_rainny",
         lambda: payload,
     )
     response = client.get("/api/v1/weather-rainny-forecast")
@@ -195,7 +196,7 @@ def test_weather_rainny_route_maps_timeout_to_504(client, monkeypatch):
         raise requests.Timeout
 
     monkeypatch.setattr(
-        "app.modules.weather.handlers.get_weather_rainny",
+        "app.modules.weather.controllers.weather.get_weather_rainny",
         raise_timeout,
     )
     response = client.get("/api/v1/weather-rainny-forecast")
@@ -209,7 +210,7 @@ def test_weather_rainny_route_maps_invalid_response_to_502(client, monkeypatch):
         raise ValueError("broken daily rain series")
 
     monkeypatch.setattr(
-        "app.modules.weather.handlers.get_weather_rainny",
+        "app.modules.weather.controllers.weather.get_weather_rainny",
         raise_invalid_response,
     )
     response = client.get("/api/v1/weather-rainny-forecast")

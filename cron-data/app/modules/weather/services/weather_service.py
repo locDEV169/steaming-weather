@@ -156,7 +156,7 @@ def get_weather_rainny() -> dict:
 def european_aqi_band(index: float) -> dict:
     """Map a European AQI number to band_code + label_key."""
     if not isinstance(index, (int, float)) or isinstance(index, bool):
-        raise ValueError("european_aqi must be a number")
+        raise ValueError("european_aqi must be a number")  # noqa: TRY004
     if index < 0:
         raise ValueError("european_aqi must be >= 0")
 
@@ -184,7 +184,7 @@ def build_air_quality(payload: dict) -> dict:
     """Attach overall EAQI results beside the upstream air-quality payload."""
     current = payload.get("current")
     if not isinstance(current, dict):
-        raise ValueError("Response does not contain a valid 'current' section")
+        raise ValueError("Response does not contain a valid 'current' section")  # noqa: TRY004
     if "european_aqi" not in current:
         raise ValueError("Response current section is missing european_aqi")
 
