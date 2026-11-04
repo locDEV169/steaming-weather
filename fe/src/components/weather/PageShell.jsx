@@ -1,4 +1,4 @@
-export function PageShell({ meta, current }) {
+export function PageShell({ meta, summary }) {
   return (
     <>
       <header class="topbar">
@@ -13,17 +13,22 @@ export function PageShell({ meta, current }) {
         <div class="topbar-meta">{meta}</div>
       </header>
 
-      <section class="location-heading" aria-labelledby="page-title">
-        <div>
+      <section
+        class="location-heading location-heading--slim"
+        aria-labelledby="page-title"
+      >
+        <div class="location-heading-title">
           <p class="eyebrow">OPEN-METEO FORECAST</p>
           <h1 id="page-title">
             Đà Nẵng <span class="heading-coordinate">16.06°N 108.24°E</span>
           </h1>
           <p class="location-subtitle">Dự báo thời tiết · Việt Nam</p>
         </div>
-        <div class="current-weather" aria-live="polite">
-          {current}
-        </div>
+        {summary ? (
+          <div class="location-heading-summary" aria-live="polite">
+            {summary}
+          </div>
+        ) : null}
       </section>
     </>
   );

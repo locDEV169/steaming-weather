@@ -1,6 +1,11 @@
 # Weather dashboard (Preact)
 
-Frontend dùng Preact và Vite. Khi load page, dashboard gọi `GET /api/v1/weather` từ Flask API trong `cron-data`. Vite proxy `/api` tới Flask trong cả `npm run dev` và `npm run preview` (cấu hình tại `middleware/api-proxy.js`). Giao diện có chế độ tổng quan, theo giờ và theo ngày, với nhiệt độ, lượng mưa, nhiệt độ cao/thấp và weather code.
+Frontend dùng Preact và Vite. Khi load page, dashboard gọi:
+
+- `GET /api/v1/weather` — dự báo hiện tại / theo giờ / theo ngày
+- `GET /api/v1/weather-rainny-forecast` — series lượng mưa quá khứ + hiện tại + dự báo (`kind`) cho chart mưa riêng
+
+Vite proxy `/api` tới Flask trong cả `npm run dev` và `npm run preview` (cấu hình tại `middleware/api-proxy.js`). Giao diện có chế độ tổng quan, theo giờ và theo ngày, kèm section chart mưa tách quá khứ / hiện tại / dự báo.
 
 ## Cài đặt
 
@@ -30,7 +35,7 @@ Mặc định lắng nghe `http://127.0.0.1:5000`.
 pnpm run dev
 ```
 
-Mở URL Vite hiển thị trong terminal (thường là `http://127.0.0.1:5173/`). Vite proxy `/api` tới Flask nên FE gọi `/api/v1/weather` cùng origin.
+Mở URL Vite hiển thị trong terminal (thường là `http://127.0.0.1:5173/`). Vite proxy `/api` tới Flask nên FE gọi `/api/v1/weather` và `/api/v1/weather-rainny-forecast` cùng origin.
 
 ## Build + preview
 

@@ -2,12 +2,15 @@ import { useEffect, useState } from "preact/hooks";
 import { CurrentWeatherSummary } from "./components/weather/CurrentWeatherSummary.jsx";
 import { ForecastSection } from "./components/weather/ForecastSection.jsx";
 import { PageShell } from "./components/weather/PageShell.jsx";
+import { RainForecastSection } from "./components/weather/RainForecastSection.jsx";
 import { TopbarMeta } from "./components/weather/TopbarMeta.jsx";
-import { DATA_URL } from "./lib/weather.js";
+import { DATA_URL, RAINNY_URL, isRainnyPayload } from "./lib/weather.js";
 
 export function App() {
   const [forecast, setForecast] = useState(null);
   const [error, setError] = useState("");
+  const [rainny, setRainny] = useState(null);
+  const [rainError, setRainError] = useState("");
   const [mode, setMode] = useState("overview");
 
   useEffect(() => {
@@ -44,7 +47,56 @@ export function App() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch(RAINNY_URL, { cache: "no-store", signal: controller.signal })
+      .then((response) => {
+        if (!response.ok)
+          throw new Error(
+            `Không tải được dữ liệu lượng mưa (HTTP ${response.status}).`,
+          );
+        return response.json();
+      })
+      .then((data) => {
+        if (!isRainnyPayload(data)) {
+          throw new Error(
+            "Phản hồi API lượng mưa thiếu days hoặc kind không hợp lệ.",
+          );
+        }
+        setRainny(data);
+      })
+      .catch((loadError) => {
+        if (loadError.name !== "AbortError") {
+          setRainError(
+            `${loadError.message} Hãy chạy Flask API (cron-data: python run.py) và Vite (fe: pnpm run dev).`,
+          );
+        }
+      });
+
+    return () => controller.abort();
+  }, []);
+
   const loading = !forecast && !error;
+  const rainLoading = !rainny && !rainError;
+  const showOverviewSummary = mode === "overview";
+  let overviewSummary = null;
+  if (showOverviewSummary) {
+    if (loading) {
+      overviewSummary = (
+        <div class="current-skeleton" aria-hidden="true">
+          <span class="skeleton-block skeleton-icon" />
+          <div>
+            <span class="skeleton-block skeleton-temp" />
+            <span class="skeleton-block skeleton-condition" />
+            <span class="skeleton-block skeleton-metrics" />
+          </div>
+        </div>
+      );
+    } else if (forecast && !error) {
+      overviewSummary = <CurrentWeatherSummary data={forecast} />;
+    }
+  }
 
   return (
     <main class="weather-page">
@@ -56,19 +108,7 @@ export function App() {
             <span class="meta-skeleton" aria-hidden="true" />
           ) : null
         }
-        current={
-          forecast ? (
-            <CurrentWeatherSummary data={forecast} />
-          ) : loading ? (
-            <div class="current-skeleton" aria-hidden="true">
-              <span class="skeleton-block skeleton-icon" />
-              <div>
-                <span class="skeleton-block skeleton-temp" />
-                <span class="skeleton-block skeleton-condition" />
-              </div>
-            </div>
-          ) : null
-        }
+        summary={overviewSummary}
       />
       <ForecastSection
         forecast={forecast}
@@ -76,6 +116,11 @@ export function App() {
         setMode={setMode}
         loading={loading}
         error={error}
+      />
+      <RainForecastSection
+        rainny={rainny}
+        loading={rainLoading}
+        error={rainError}
       />
       <footer class="page-footer">
         <span>

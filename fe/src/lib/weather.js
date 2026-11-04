@@ -1,4 +1,20 @@
 export const DATA_URL = "/api/v1/weather";
+export const RAINNY_URL = "/api/v1/weather-rainny-forecast";
+
+export function isRainnyPayload(data) {
+  return (
+    Array.isArray(data?.days) &&
+    data.days.length > 0 &&
+    data.days.every(
+      (day) =>
+        typeof day?.date === "string" &&
+        typeof day?.rain_sum === "number" &&
+        (day.kind === "past" ||
+          day.kind === "current" ||
+          day.kind === "future"),
+    )
+  );
+}
 
 export const weatherDescriptions = {
   0: ["Nắng quang", "☀"],
@@ -33,6 +49,55 @@ export const weatherDescriptions = {
 
 export function describeWeather(code) {
   return weatherDescriptions[code] ?? ["Chưa xác định", "·"];
+}
+
+export function formatWeekday(isoTime) {
+  if (typeof isoTime !== "string" || !isoTime.includes("T")) return null;
+  const date = new Date(isoTime);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("vi-VN", { weekday: "long" }).format(date);
+}
+
+// ponytail: current.time is often :15/:30 while hourly is on the hour — floor then nearest.
+export function joinHourlyPrecipProbability(forecast) {
+  const currentTime = forecast?.current?.time;
+  const times = forecast?.hourly?.time;
+  const probs = forecast?.hourly?.precipitation_probability;
+  if (
+    typeof currentTime !== "string" ||
+    !Array.isArray(times) ||
+    !Array.isArray(probs) ||
+    times.length === 0
+  ) {
+    return null;
+  }
+
+  const [datePart, timePart] = currentTime.split("T");
+  const floored =
+    datePart && timePart?.length >= 2
+      ? `${datePart}T${timePart.slice(0, 2)}:00`
+      : null;
+
+  let index = floored ? times.indexOf(floored) : -1;
+
+  if (index < 0) {
+    const currentMs = Date.parse(currentTime);
+    if (!Number.isFinite(currentMs)) return null;
+    let bestDelta = Infinity;
+    for (let i = 0; i < times.length; i += 1) {
+      const ms = Date.parse(times[i]);
+      if (!Number.isFinite(ms)) continue;
+      const delta = Math.abs(ms - currentMs);
+      if (delta < bestDelta) {
+        bestDelta = delta;
+        index = i;
+      }
+    }
+  }
+
+  if (index < 0 || index >= probs.length) return null;
+  const value = probs[index];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 export function timestampLabel(value, mode) {
