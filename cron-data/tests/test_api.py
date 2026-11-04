@@ -78,6 +78,93 @@ def test_swagger_docs_and_openapi_definition_are_available(client):
     paths = schema_response.get_json()["paths"]
     assert "/api/v1/weather" in paths
     assert "/api/v1/weather-rainny-forecast" in paths
+    assert "/api/v1/air-quality" in paths
+
+
+def test_air_quality_route_returns_provider_payload_with_results(client, monkeypatch):
+    payload = {
+        "latitude": 16.0544,
+        "longitude": 108.2022,
+        "timezone": "Asia/Bangkok",
+        "current": {"european_aqi": 42, "pm2_5": 12.1},
+        "results": {
+            "scale": "european_aqi",
+            "band_table_version": "open-meteo-eea-2024",
+            "source": "https://open-meteo.com/en/docs/air-quality-api",
+            "overall": {
+                "index": 42,
+                "band_code": "moderate",
+                "label_key": "aqi.european.moderate",
+            },
+            "summary": {
+                "band_code": "moderate",
+                "level_vi": "Trung bình",
+                "level_en": "Moderate",
+                "meaning_vi": (
+                    "Chấp nhận được; nhóm quá nhạy cảm có thể thấy triệu chứng nhẹ."
+                ),
+                "meaning_en": (
+                    "Acceptable; very sensitive groups may notice mild symptoms."
+                ),
+            },
+        },
+    }
+    monkeypatch.setattr(
+        "src.controllers.weather_air_quality_controller.get_air_quality",
+        lambda: payload,
+    )
+    response = client.get("/api/v1/air-quality")
+
+    assert response.status_code == 200
+    assert response.content_type == "application/json"
+    body = response.get_json()
+    assert body == payload
+    assert body["results"]["overall"]["band_code"] == "moderate"
+    assert "us_aqi" not in body
+
+
+def test_air_quality_route_maps_timeout_to_504(client, monkeypatch):
+    def raise_timeout():
+        raise requests.Timeout
+
+    monkeypatch.setattr(
+        "src.controllers.weather_air_quality_controller.get_air_quality",
+        raise_timeout,
+    )
+    response = client.get("/api/v1/air-quality")
+
+    assert response.status_code == 504
+    assert response.get_json()["error"]["code"] == "UPSTREAM_TIMEOUT"
+
+
+def test_air_quality_route_maps_upstream_error_to_502(client, monkeypatch):
+    def raise_http_error():
+        raise requests.HTTPError("sensitive upstream detail")
+
+    monkeypatch.setattr(
+        "src.controllers.weather_air_quality_controller.get_air_quality",
+        raise_http_error,
+    )
+    response = client.get("/api/v1/air-quality")
+
+    assert response.status_code == 502
+    assert response.get_json()["error"]["code"] == "UPSTREAM_ERROR"
+    assert "sensitive upstream detail" not in response.get_data(as_text=True)
+
+
+def test_air_quality_route_maps_invalid_response_to_502(client, monkeypatch):
+    def raise_invalid_response():
+        raise ValueError("missing european_aqi")
+
+    monkeypatch.setattr(
+        "src.controllers.weather_air_quality_controller.get_air_quality",
+        raise_invalid_response,
+    )
+    response = client.get("/api/v1/air-quality")
+
+    assert response.status_code == 502
+    assert response.get_json()["error"]["code"] == "INVALID_UPSTREAM_RESPONSE"
+    assert "missing european_aqi" not in response.get_data(as_text=True)
 
 
 def test_weather_rainny_route_returns_labeled_series(client, monkeypatch):

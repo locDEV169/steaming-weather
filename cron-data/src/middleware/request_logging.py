@@ -28,4 +28,5 @@ def register_request_logging(app: Flask) -> None:
             response.status_code,
             duration_ms,
         )
+        print(f"Request: {request.method} {request.path} -> {response.status_code} ({duration_ms}ms)")
         return response

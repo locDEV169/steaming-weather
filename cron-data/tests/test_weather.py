@@ -44,6 +44,9 @@ def test_current_section_becomes_one_row():
         "interval": 900,
         "temperature_2m": 14.2,
         "weather_code": 3,
+        "relative_humidity_2m": 88,
+        "is_day": 1,
+        "apparent_temperature": 15.1,
     }
 
     frame = to_frame("current", current)
@@ -51,6 +54,7 @@ def test_current_section_becomes_one_row():
     assert list(frame.columns) == CURRENT_COLUMNS
     assert len(frame) == 1
     assert frame.iloc[0]["weather_code"] == 3
+    assert frame.iloc[0]["relative_humidity_2m"] == 88
 
 
 def test_hourly_and_daily_sections_keep_timestamp_rows():
@@ -58,6 +62,8 @@ def test_hourly_and_daily_sections_keep_timestamp_rows():
         "time": ["2026-10-28T12:00", "2026-10-28T13:00"],
         "temperature_2m": [14.2, 15.0],
         "weather_code": [3, 2],
+        "precipitation_probability": [10, 40],
+        "precipitation": [0.0, 0.2],
     }
     daily = {
         "time": ["2026-10-28", "2026-10-29"],

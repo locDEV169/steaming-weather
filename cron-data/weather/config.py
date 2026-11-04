@@ -7,15 +7,31 @@ PARAMS = {
     "latitude": 16.0544,
     "longitude": 108.2022,
     "daily": "weather_code,sunrise,rain_sum,sunset,temperature_2m_max,temperature_2m_min",
-    "hourly": "temperature_2m,weather_code",
-    "current": "weather_code,temperature_2m",
+    "hourly": "temperature_2m,weather_code,precipitation_probability,precipitation",
+    "current": "weather_code,temperature_2m,relative_humidity_2m,is_day,apparent_temperature",
     "timezone": "Asia/Bangkok",
     "forecast_days": 7,
     "past_days": 7,
 }
 
-CURRENT_COLUMNS = ["time", "interval", "temperature_2m", "weather_code"]
-HOURLY_COLUMNS = ["time", "temperature_2m", "weather_code"]
+CURRENT_COLUMNS = [
+    "time",
+    "interval",
+    "temperature_2m",
+    "weather_code",
+    "relative_humidity_2m",
+    "is_day",
+    "apparent_temperature",
+]
+
+HOURLY_COLUMNS = [
+    "time",
+    "temperature_2m",
+    "weather_code",
+    "precipitation_probability",
+    "precipitation",
+]
+
 DAILY_COLUMNS = [
     "time",
     "weather_code",

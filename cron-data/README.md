@@ -33,8 +33,8 @@ Project dùng các tham số API sau:
 - Tọa độ trung tâm Đà Nẵng: latitude `16.0544`, longitude `108.2022`.
 - Timezone: `Asia/Bangkok` (GMT+7), cùng múi giờ với Việt Nam.
 - Cửa sổ thời gian: `past_days=7`, `forecast_days=7` (7 ngày quá khứ dạng archived forecast + 7 ngày dự báo).
-- Hiện tại: `weather_code`, `temperature_2m`.
-- Theo giờ: `temperature_2m`, `weather_code`.
+- Hiện tại: `weather_code`, `temperature_2m`, `relative_humidity_2m`, `is_day`, `apparent_temperature`.
+- Theo giờ: `temperature_2m`, `weather_code`, `precipitation_probability`, `precipitation`.
 - Theo ngày: `weather_code`, `sunrise`, `rain_sum`, `sunset`, `temperature_2m_max`, `temperature_2m_min`.
 
 API nguồn Open-Meteo không cần API key. Auth cho Flask API là **optional** (xem middleware bên dưới).
@@ -65,6 +65,14 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
+```
+cd cron-data
+source .venv/Scripts/activate   # nếu chưa có venv trong cron-data:
+# python -m venv .venv && source .venv/Scripts/activate
+python -m pip install -r requirements.txt
+python run.py
+```
+
 
 Có thể tạo `.env` local từ `.env.example`; file `.env` được Git bỏ qua.
 
@@ -95,6 +103,7 @@ API cung cấp:
 
 - `GET /api/v1/weather` — mỗi request gọi Open-Meteo trực tiếp qua `weather/api.py` và trả payload JSON gồm `current`, `hourly`, `daily` cùng metadata. Endpoint không đọc snapshot từ `data/open_meteo.json` và hiện chưa ghi lại file CSV/JSON.
 - `GET /api/v1/weather-rainny-forecast` — series lượng mưa theo ngày (past + current + future) để FE chart. Không cần query param; server lấy `as_of` theo `Asia/Bangkok`. Mỗi phần tử có `date`, `rain_sum`, và `kind` (`past` | `current` | `future`).
+- `GET /api/v1/air-quality` — mỗi request gọi Open-Meteo Air Quality API và trả payload upstream (European AQI + pollutants hiện tại cho Đà Nẵng) kèm `results.overall` (band từ `european_aqi`, bảng Open-Meteo/EEA 2024) và `results.summary` (nhãn/ý nghĩa song ngữ VI+EN để FE hiển thị). Không dùng US AQI; chưa có đánh giá từng pollutant. Text summary mang tính thông tin UI, không phải tư vấn y tế.
 
 Chạy development server trong thư mục `cron-data`:
 
@@ -134,6 +143,12 @@ python -m pytest
 cd cron-data
 python -m pip install -r requirements.txt
 python run.py
+```
+
+OR
+
+```
+.venv/Scripts/python.exe run.py
 ```
 
 
