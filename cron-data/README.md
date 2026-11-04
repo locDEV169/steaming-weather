@@ -1,30 +1,56 @@
 # Open-Meteo Weather Data
 
-Flask API và CLI lấy dự báo thời tiết từ [Open-Meteo Forecast API](https://open-meteo.com/en/docs). Flask API dùng app factory trong `src/`; package `weather/` giữ trách nhiệm gọi API nguồn, chuyển đổi bảng và lưu file.
+Flask API và CLI lấy dự báo thời tiết từ [Open-Meteo Forecast API](https://open-meteo.com/en/docs). Flask dùng app factory trong `app/`; feature weather nằm vertical slice dưới `app/modules/weather/`.
 
 ## Cấu trúc
 
+Tên folder `cron-data` là lịch sử monorepo; hiện tại đây là **Flask weather API + CLI**, kèm ingest tay lên Supabase (chưa gắn scheduler).
+
 ```text
 cron-data/
-├── src/
-│   ├── __init__.py                 # Application factory
-│   ├── config.py                   # Host/port, CORS, optional API key
-│   ├── middleware/                 # CORS, logging, errors, optional auth
-│   ├── routes/weather_routes.py    # URL và HTTP method
-│   ├── controllers/                # HTTP response/error mapping
-│   ├── services/                   # Use cases, gọi package weather
-│   └── models/weather.py           # Typed response contract, không dùng ORM
-├── tests/                          # Pytest và fixtures
-├── weather/                        # Open-Meteo client, transform, storage
-├── data/                           # JSON/CSV tạo bởi CLI
-├── .env.example                    # Mẫu config local, không chứa secret
-├── Dockerfile                      # Container chạy qua Gunicorn
-├── main.py                         # Tải dữ liệu và ghi file
-├── run.py                          # Chạy Flask development server
+├── app/                              # Flask application package
+│   ├── __init__.py                   # Application factory (create_app)
+│   ├── config.py                     # Host/port, CORS, API key, Supabase env
+│   ├── common/                       # CORS, logging, errors, optional auth
+│   ├── static/swagger.json           # OpenAPI cho /api/docs
+│   └── modules/
+│       └── weather/                  # Vertical weather module
+│           ├── __init__.py           # Export blueprint
+│           ├── routes.py             # URL + HTTP method
+│           ├── handlers.py           # HTTP response/error mapping
+│           ├── weather_service.py    # Use cases: forecast, rainny, AQ
+│           ├── ingest_service.py     # Snapshot ingest orchestration
+│           ├── repository.py         # Supabase PostgREST upsert
+│           ├── models.py             # Typed response contract (không ORM)
+│           └── provider/             # Open-Meteo client + CLI export
+│               ├── api.py / air_quality.py
+│               ├── config.py / transform.py
+│               └── storage.py
+├── supabase/migrations/              # SQL schema (local migrate hoặc SQL Editor)
+├── scripts/migrate.py                # Apply SQL qua psql + DATABASE_URL
+├── tests/                            # Pytest
+├── data/                             # JSON/CSV tạo bởi CLI (gitignore)
+├── .env.example
+├── Dockerfile                        # COPY app; Gunicorn app:create_app()
+├── main.py                           # CLI tải dữ liệu và ghi file
+├── run.py                            # Flask development server
 └── requirements.txt
 ```
 
-Chưa có database trong nghiệp vụ hiện tại, nên `src/models/` chỉ khai báo kiểu response; không thêm SQLAlchemy/MongoDB.
+### Vai trò từng phần
+
+| Phần | Việc |
+| --- | --- |
+| `app/` | Factory + config + static |
+| `app/common/` | Cross-cutting HTTP middleware |
+| `app/modules/weather/` | Routes → handlers → services → repository |
+| `app/modules/weather/provider/` | Gọi Open-Meteo, transform, lưu file CLI |
+| `supabase/` | Migration SQL cho bảng `weather_snapshots` (latest-only jsonb) |
+| `scripts/migrate.py` | Apply migration từ local (`psql` + `DATABASE_URL`) |
+| `tests/` | Pytest cho API, domain, ingest |
+| `app/modules/weather/models.py` | TypedDict / contract response; **không** SQLAlchemy |
+
+Snapshot Supabase là persistence tùy chọn qua `POST /api/v1/ingest`. GET live vẫn gọi Open-Meteo trực tiếp và không đọc `data/` hay DB.
 
 ## Tham số API
 
@@ -41,7 +67,7 @@ API nguồn Open-Meteo không cần API key. Auth cho Flask API là **optional**
 
 ## Middleware
 
-`src/middleware/` đăng ký trong app factory:
+`app/common/` đăng ký trong app factory:
 
 | Middleware | Hành vi |
 | --- | --- |
@@ -101,9 +127,37 @@ CSV dùng UTF-8 BOM để mở thuận tiện bằng Excel. Mỗi lần chạy s
 
 API cung cấp:
 
-- `GET /api/v1/weather` — mỗi request gọi Open-Meteo trực tiếp qua `weather/api.py` và trả payload JSON gồm `current`, `hourly`, `daily` cùng metadata. Endpoint không đọc snapshot từ `data/open_meteo.json` và hiện chưa ghi lại file CSV/JSON.
+- `GET /api/v1/weather` — mỗi request gọi Open-Meteo trực tiếp qua `app/modules/weather/provider/api.py` và trả payload JSON gồm `current`, `hourly`, `daily` cùng metadata. Endpoint không đọc snapshot từ `data/open_meteo.json` và hiện chưa ghi lại file CSV/JSON.
 - `GET /api/v1/weather-rainny-forecast` — series lượng mưa theo ngày (past + current + future) để FE chart. Không cần query param; server lấy `as_of` theo `Asia/Bangkok`. Mỗi phần tử có `date`, `rain_sum`, và `kind` (`past` | `current` | `future`).
 - `GET /api/v1/air-quality` — mỗi request gọi Open-Meteo Air Quality API và trả payload upstream (European AQI + pollutants hiện tại cho Đà Nẵng) kèm `results.overall` (band từ `european_aqi`, bảng Open-Meteo/EEA 2024) và `results.summary` (nhãn/ý nghĩa song ngữ VI+EN để FE hiển thị). Không dùng US AQI; chưa có đánh giá từng pollutant. Text summary mang tính thông tin UI, không phải tư vấn y tế.
+- `POST /api/v1/ingest` — fetch + shape weather/rainny/air_quality rồi upsert vào Supabase (`weather_snapshots`). Cần `WEATHER_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Cron chưa gắn; gọi tay để seed. Partial update từng kind được phép.
+
+### Seed data lên Supabase (no-cron MVP)
+
+1. Tạo project Supabase; copy **Project URL**, **anon** (cho FE sau), **service_role** (chỉ Flask).
+2. Apply schema `weather_snapshots` từ local (cần [psql](https://www.postgresql.org/download/) trên PATH):
+
+```powershell
+# Dashboard → Project Settings → Database → URI → dán vào DATABASE_URL trong .env
+# (đây là Postgres connection string, không phải service_role JWT)
+cd cron-data
+python scripts/migrate.py
+```
+
+Fallback nếu chưa có `psql`: mở **SQL Editor** trên Dashboard và chạy nội dung `supabase/migrations/001_weather_snapshots.sql`.
+
+3. Điền `cron-data/.env` (xem `.env.example`) — **không commit** service role / `DATABASE_URL`.
+4. Chạy Flask rồi ingest:
+
+```powershell
+$env:WEATHER_API_KEY="your-local-key"
+# hoặc set trong .env rồi:
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5000/api/v1/ingest -Headers @{ "X-API-Key" = "your-local-key" }
+```
+
+```bash
+curl -X POST http://127.0.0.1:5000/api/v1/ingest -H "X-API-Key: your-local-key"
+```
 
 Chạy development server trong thư mục `cron-data`:
 

@@ -10,11 +10,10 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY src ./src
-COPY weather ./weather
+COPY app ./app
 COPY run.py ./run.py
 COPY main.py ./main.py
 
 EXPOSE 5000
 
-CMD ["sh", "-c", "gunicorn --bind ${WEATHER_API_HOST}:${WEATHER_API_PORT} 'src:create_app()'"]
+CMD ["sh", "-c", "gunicorn --bind ${WEATHER_API_HOST}:${WEATHER_API_PORT} 'app:create_app()'"]

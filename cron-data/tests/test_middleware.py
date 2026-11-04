@@ -3,7 +3,7 @@
 import logging
 
 import pytest
-from src import create_app
+from app import create_app
 
 
 @pytest.fixture
@@ -14,7 +14,7 @@ def auth_client():
 
 def test_cors_headers_on_weather_response(client, monkeypatch):
     monkeypatch.setattr(
-        "src.controllers.weather_controller.fetch_forecast",
+        "app.modules.weather.handlers.fetch_forecast",
         lambda: {"current": {}, "hourly": {}, "daily": {}},
     )
     response = client.get("/api/v1/weather")
@@ -40,7 +40,7 @@ def test_cors_preflight_options(client):
 
 def test_auth_disabled_by_default(client, monkeypatch):
     monkeypatch.setattr(
-        "src.controllers.weather_controller.fetch_forecast",
+        "app.modules.weather.handlers.fetch_forecast",
         lambda: {"current": {}, "hourly": {}, "daily": {}},
     )
     response = client.get("/api/v1/weather")
@@ -56,7 +56,7 @@ def test_auth_rejects_missing_api_key(auth_client):
 
 def test_auth_accepts_x_api_key(auth_client, monkeypatch):
     monkeypatch.setattr(
-        "src.controllers.weather_controller.fetch_forecast",
+        "app.modules.weather.handlers.fetch_forecast",
         lambda: {"current": {}, "hourly": {}, "daily": {}},
     )
     response = auth_client.get(
@@ -67,7 +67,7 @@ def test_auth_accepts_x_api_key(auth_client, monkeypatch):
 
 def test_auth_accepts_bearer_token(auth_client, monkeypatch):
     monkeypatch.setattr(
-        "src.controllers.weather_controller.fetch_forecast",
+        "app.modules.weather.handlers.fetch_forecast",
         lambda: {"current": {}, "hourly": {}, "daily": {}},
     )
     response = auth_client.get(
@@ -89,7 +89,13 @@ def test_not_found_returns_json_error(client):
 
 
 def test_unhandled_exception_returns_json_without_internals():
-    app = create_app({"TESTING": True, "PROPAGATE_EXCEPTIONS": False})
+    app = create_app(
+        {
+            "TESTING": True,
+            "PROPAGATE_EXCEPTIONS": False,
+            "WEATHER_API_KEY": "",
+        }
+    )
 
     def boom():
         raise RuntimeError("sensitive internal detail")
@@ -105,7 +111,7 @@ def test_unhandled_exception_returns_json_without_internals():
 
 def test_request_logging_emits_info(client, monkeypatch, caplog):
     monkeypatch.setattr(
-        "src.controllers.weather_controller.fetch_forecast",
+        "app.modules.weather.handlers.fetch_forecast",
         lambda: {"current": {}, "hourly": {}, "daily": {}},
     )
     with caplog.at_level(logging.INFO, logger="weather.api"):

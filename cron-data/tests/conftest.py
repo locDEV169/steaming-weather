@@ -1,10 +1,11 @@
 """Shared pytest fixtures for the Flask API."""
 
 import pytest
-from src import create_app
+from app import create_app
 
 
 @pytest.fixture
 def client():
-    app = create_app({"TESTING": True})
+    # Override .env so local WEATHER_API_KEY does not flip default-auth tests.
+    app = create_app({"TESTING": True, "WEATHER_API_KEY": ""})
     return app.test_client()

@@ -1,0 +1,465 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Weather Forecast API",
+    "description": "Backend API for retrieving the current, hourly, and daily Open-Meteo forecast for Da Nang.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/v1/weather": {
+      "get": {
+        "summary": "Get the current weather forecast",
+        "description": "Fetches the configured forecast from Open-Meteo and returns the provider payload. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
+        "operationId": "getWeatherForecast",
+        "security": [
+          {},
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Forecast retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherForecast"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key when WEATHER_API_KEY is configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The weather provider returned an error or an invalid response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The weather provider timed out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/weather-rainny-forecast": {
+      "get": {
+        "summary": "Get daily rainfall series for charting",
+        "description": "Returns past, current, and future daily rain_sum values for Da Nang. The server derives as_of in Asia/Bangkok; no query params are required. Each day includes kind: past, current, or future. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
+        "operationId": "getWeatherRainny",
+        "security": [
+          {},
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rainfall series retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherRainny"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key when WEATHER_API_KEY is configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The weather provider returned an error or an invalid response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The weather provider timed out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ingest": {
+      "post": {
+        "summary": "Ingest shaped snapshots into Supabase",
+        "description": "Fetches Open-Meteo weather and air quality, shapes rainny and AQ results, and upserts latest-only rows into weather_snapshots. Requires WEATHER_API_KEY and Supabase service role env. Partial per-kind updates are allowed. Cron is not required.",
+        "operationId": "postWeatherIngest",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "At least one snapshot kind was updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["ok", "fetched_at", "updated", "results"],
+                  "properties": {
+                    "ok": { "type": "boolean", "example": true },
+                    "fetched_at": {
+                      "type": "string",
+                      "example": "2026-11-04T04:00:00+00:00"
+                    },
+                    "updated": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "example": ["weather", "rainny", "air_quality"]
+                    },
+                    "results": { "type": "object", "additionalProperties": true }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "502": {
+            "description": "No snapshot kinds were updated.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "503": {
+            "description": "Ingest auth or Supabase is not configured.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/air-quality": {
+      "get": {
+        "summary": "Get current European AQI for Da Nang",
+        "description": "Fetches current air quality from Open-Meteo Air Quality API and returns the provider payload plus additive results.overall (band from european_aqi) and results.summary (bilingual UI copy). No US AQI, no per-pollutant assessment. Summary text is informational band copy for display, not clinical advice. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
+        "operationId": "getAirQuality",
+        "security": [
+          {},
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Air quality retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AirQuality"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key when WEATHER_API_KEY is configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The air quality provider returned an error or an invalid response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The air quality provider timed out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "WeatherForecast": {
+        "type": "object",
+        "required": ["current", "hourly", "daily"],
+        "properties": {
+          "latitude": { "type": "number", "example": 16.063269 },
+          "longitude": { "type": "number", "example": 108.23864 },
+          "timezone": { "type": "string", "example": "Asia/Bangkok" },
+          "current": { "type": "object", "additionalProperties": true },
+          "hourly": { "type": "object", "additionalProperties": true },
+          "daily": { "type": "object", "additionalProperties": true }
+        },
+        "additionalProperties": true
+      },
+      "AirQualityOverallResult": {
+        "type": "object",
+        "required": ["index", "band_code", "label_key"],
+        "properties": {
+          "index": { "type": "number", "example": 32 },
+          "band_code": {
+            "type": "string",
+            "enum": [
+              "good",
+              "fair",
+              "moderate",
+              "poor",
+              "very_poor",
+              "extremely_poor"
+            ],
+            "example": "fair"
+          },
+          "label_key": {
+            "type": "string",
+            "example": "aqi.european.fair"
+          }
+        }
+      },
+      "AirQualitySummary": {
+        "type": "object",
+        "required": [
+          "band_code",
+          "level_vi",
+          "level_en",
+          "meaning_vi",
+          "meaning_en"
+        ],
+        "properties": {
+          "band_code": {
+            "type": "string",
+            "enum": [
+              "good",
+              "fair",
+              "moderate",
+              "poor",
+              "very_poor",
+              "extremely_poor"
+            ],
+            "example": "fair"
+          },
+          "level_vi": { "type": "string", "example": "Tốt" },
+          "level_en": { "type": "string", "example": "Fair" },
+          "meaning_vi": {
+            "type": "string",
+            "example": "Không khí sạch, an toàn cho đại đa số người dân."
+          },
+          "meaning_en": {
+            "type": "string",
+            "example": "Air is clean and safe for the vast majority of people."
+          }
+        }
+      },
+      "AirQualityResults": {
+        "type": "object",
+        "required": [
+          "scale",
+          "band_table_version",
+          "source",
+          "overall",
+          "summary"
+        ],
+        "properties": {
+          "scale": { "type": "string", "example": "european_aqi" },
+          "band_table_version": {
+            "type": "string",
+            "example": "open-meteo-eea-2024"
+          },
+          "source": {
+            "type": "string",
+            "example": "https://open-meteo.com/en/docs/air-quality-api"
+          },
+          "overall": { "$ref": "#/components/schemas/AirQualityOverallResult" },
+          "summary": { "$ref": "#/components/schemas/AirQualitySummary" }
+        }
+      },
+      "AirQuality": {
+        "type": "object",
+        "required": ["current", "results"],
+        "properties": {
+          "latitude": { "type": "number", "example": 16.0544 },
+          "longitude": { "type": "number", "example": 108.2022 },
+          "timezone": { "type": "string", "example": "Asia/Bangkok" },
+          "current": {
+            "type": "object",
+            "required": ["european_aqi"],
+            "properties": {
+              "time": { "type": "string", "example": "2026-11-04T09:00" },
+              "interval": { "type": "integer", "example": 3600 },
+              "european_aqi": { "type": "number", "example": 42 },
+              "pm2_5": { "type": "number", "example": 12.1 },
+              "pm10": { "type": "number", "example": 18.4 },
+              "nitrogen_dioxide": { "type": "number", "example": 8.2 },
+              "ozone": { "type": "number", "example": 55.0 },
+              "sulphur_dioxide": { "type": "number", "example": 1.1 }
+            },
+            "additionalProperties": true
+          },
+          "results": { "$ref": "#/components/schemas/AirQualityResults" }
+        },
+        "additionalProperties": true
+      },
+      "WeatherRainnyDay": {
+        "type": "object",
+        "required": ["date", "rain_sum", "kind"],
+        "properties": {
+          "date": { "type": "string", "format": "date", "example": "2026-10-29" },
+          "rain_sum": { "type": "number", "example": 3.1 },
+          "kind": {
+            "type": "string",
+            "enum": ["past", "current", "future"],
+            "example": "current"
+          }
+        }
+      },
+      "WeatherRainny": {
+        "type": "object",
+        "required": ["location", "timezone", "as_of", "unit", "days"],
+        "properties": {
+          "location": {
+            "type": "object",
+            "required": ["latitude", "longitude"],
+            "properties": {
+              "latitude": { "type": "number", "example": 16.0544 },
+              "longitude": { "type": "number", "example": 108.2022 }
+            }
+          },
+          "timezone": { "type": "string", "example": "Asia/Bangkok" },
+          "as_of": { "type": "string", "format": "date", "example": "2026-10-29" },
+          "unit": { "type": "string", "example": "mm" },
+          "days": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WeatherRainnyDay" }
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "UNAUTHORIZED",
+                  "NOT_FOUND",
+                  "METHOD_NOT_ALLOWED",
+                  "INTERNAL_ERROR",
+                  "UPSTREAM_TIMEOUT",
+                  "UPSTREAM_ERROR",
+                  "INVALID_UPSTREAM_RESPONSE",
+                  "INGEST_AUTH_REQUIRED",
+                  "SUPABASE_NOT_CONFIGURED",
+                  "INGEST_FAILED",
+                  "SUPABASE_WRITE_ERROR"
+                ]
+              },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

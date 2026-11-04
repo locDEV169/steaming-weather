@@ -1,8 +1,13 @@
 """Fetch Open-Meteo current, hourly, and daily forecast data."""
 
-from weather.api import fetch_forecast
-from weather.config import CURRENT_OUTPUT, DAILY_OUTPUT, HOURLY_OUTPUT, RAW_OUTPUT
-from weather.storage import save_forecast
+from app.modules.weather.provider.api import fetch_forecast
+from app.modules.weather.provider.config import (
+    CURRENT_OUTPUT,
+    DAILY_OUTPUT,
+    HOURLY_OUTPUT,
+    RAW_OUTPUT,
+)
+from app.modules.weather.provider.storage import save_forecast
 
 
 def main() -> None:

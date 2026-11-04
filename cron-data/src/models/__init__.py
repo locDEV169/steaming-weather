@@ -1,1 +1,0 @@
-"""Typed data contracts used by the application."""

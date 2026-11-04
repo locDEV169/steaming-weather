@@ -3,16 +3,16 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from weather.api import fetch_forecast
-from weather.config import CURRENT_COLUMNS, DAILY_COLUMNS, HOURLY_COLUMNS, PARAMS
-from weather.transform import to_frame
+from app.modules.weather.provider.api import fetch_forecast
+from app.modules.weather.provider.config import CURRENT_COLUMNS, DAILY_COLUMNS, HOURLY_COLUMNS, PARAMS
+from app.modules.weather.provider.transform import to_frame
 
 
 def test_request_uses_configured_open_meteo_parameters():
     response = Mock()
     response.json.return_value = {"current": {}, "hourly": {}, "daily": {}}
 
-    with patch("weather.api.requests.get", return_value=response) as get:
+    with patch("app.modules.weather.provider.api.requests.get", return_value=response) as get:
         payload = fetch_forecast()
 
     get.assert_called_once_with(
@@ -33,7 +33,7 @@ def test_non_object_response_is_rejected():
     response = Mock()
     response.json.return_value = ["unexpected", "array"]
 
-    with patch("weather.api.requests.get", return_value=response):  # noqa: SIM117
+    with patch("app.modules.weather.provider.api.requests.get", return_value=response):  # noqa: SIM117
         with pytest.raises(TypeError, match="valid JSON object"):
             fetch_forecast()
 
