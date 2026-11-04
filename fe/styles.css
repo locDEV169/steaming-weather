@@ -355,7 +355,6 @@ h2 {
 
 .chart-frame {
   position: relative;
-  min-height: 420px;
   margin-top: 2px;
   border-top: 1px solid rgba(190, 207, 220, 0.12);
   border-bottom: 1px solid rgba(190, 207, 220, 0.08);
@@ -464,6 +463,72 @@ h2 {
   margin: 12px 0 0;
   color: #81909d;
   font-size: 11px;
+}
+
+.aq-panel {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border-left: 3px solid #6a7f90;
+  background: rgba(191, 207, 220, 0.04);
+}
+
+.aq-primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 16px;
+}
+
+.aq-index {
+  margin: 0;
+  font: 600 28px/1 "Manrope", sans-serif;
+  color: #e8eef3;
+  letter-spacing: -0.02em;
+}
+
+.aq-index-unit {
+  margin-left: 4px;
+  color: #81909d;
+  font: 500 11px/1 "DM Sans", sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.aq-level {
+  margin: 0;
+  font: 600 16px/1.2 "Manrope", sans-serif;
+  color: #d5dee6;
+}
+
+.aq-meaning {
+  margin: 0;
+  max-width: 42rem;
+  color: #9aabbb;
+  font: 400 14px/1.45 "DM Sans", sans-serif;
+}
+
+.aq-band--good {
+  border-left-color: #5fad7a;
+}
+
+.aq-band--fair {
+  border-left-color: #7eb56a;
+}
+
+.aq-band--moderate {
+  border-left-color: #c4a35a;
+}
+
+.aq-band--poor {
+  border-left-color: #c47a4a;
+}
+
+.aq-band--very_poor {
+  border-left-color: #c45a5a;
+}
+
+.aq-band--extremely_poor {
+  border-left-color: #9b3d52;
 }
 
 .page-footer {

@@ -1,5 +1,15 @@
 export const DATA_URL = "/api/v1/weather";
 export const RAINNY_URL = "/api/v1/weather-rainny-forecast";
+export const AIR_QUALITY_URL = "/api/v1/air-quality";
+
+const AQ_BAND_CODES = new Set([
+  "good",
+  "fair",
+  "moderate",
+  "poor",
+  "very_poor",
+  "extremely_poor",
+]);
 
 export function isRainnyPayload(data) {
   return (
@@ -13,6 +23,21 @@ export function isRainnyPayload(data) {
           day.kind === "current" ||
           day.kind === "future"),
     )
+  );
+}
+
+export function isAirQualityPayload(data) {
+  const summary = data?.results?.summary;
+  const index = data?.results?.overall?.index;
+  return (
+    summary != null &&
+    AQ_BAND_CODES.has(summary.band_code) &&
+    typeof summary.level_vi === "string" &&
+    summary.level_vi.length > 0 &&
+    typeof summary.meaning_vi === "string" &&
+    summary.meaning_vi.length > 0 &&
+    typeof index === "number" &&
+    Number.isFinite(index)
   );
 }
 

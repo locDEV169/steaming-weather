@@ -1,16 +1,25 @@
 import { useEffect, useState } from "preact/hooks";
+import { AirQualitySection } from "./components/weather/AirQualitySection.jsx";
 import { CurrentWeatherSummary } from "./components/weather/CurrentWeatherSummary.jsx";
 import { ForecastSection } from "./components/weather/ForecastSection.jsx";
 import { PageShell } from "./components/weather/PageShell.jsx";
 import { RainForecastSection } from "./components/weather/RainForecastSection.jsx";
 import { TopbarMeta } from "./components/weather/TopbarMeta.jsx";
-import { DATA_URL, RAINNY_URL, isRainnyPayload } from "./lib/weather.js";
+import {
+  AIR_QUALITY_URL,
+  DATA_URL,
+  RAINNY_URL,
+  isAirQualityPayload,
+  isRainnyPayload,
+} from "./lib/weather.js";
 
 export function App() {
   const [forecast, setForecast] = useState(null);
   const [error, setError] = useState("");
   const [rainny, setRainny] = useState(null);
   const [rainError, setRainError] = useState("");
+  const [airQuality, setAirQuality] = useState(null);
+  const [aqError, setAqError] = useState("");
   const [mode, setMode] = useState("overview");
 
   useEffect(() => {
@@ -77,8 +86,39 @@ export function App() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch(AIR_QUALITY_URL, { cache: "no-store", signal: controller.signal })
+      .then((response) => {
+        if (!response.ok)
+          throw new Error(
+            `Không tải được chất lượng không khí (HTTP ${response.status}).`,
+          );
+        return response.json();
+      })
+      .then((data) => {
+        if (!isAirQualityPayload(data)) {
+          throw new Error(
+            "Phản hồi API không khí thiếu results.summary hoặc overall.index.",
+          );
+        }
+        setAirQuality(data);
+      })
+      .catch((loadError) => {
+        if (loadError.name !== "AbortError") {
+          setAqError(
+            `${loadError.message} Hãy chạy Flask API (cron-data: python run.py) và Vite (fe: pnpm run dev).`,
+          );
+        }
+      });
+
+    return () => controller.abort();
+  }, []);
+
   const loading = !forecast && !error;
   const rainLoading = !rainny && !rainError;
+  const aqLoading = !airQuality && !aqError;
   const showOverviewSummary = mode === "overview";
   let overviewSummary = null;
   if (showOverviewSummary) {
@@ -116,6 +156,11 @@ export function App() {
         setMode={setMode}
         loading={loading}
         error={error}
+      />
+      <AirQualitySection
+        airQuality={airQuality}
+        loading={aqLoading}
+        error={aqError}
       />
       <RainForecastSection
         rainny={rainny}
