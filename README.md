@@ -111,11 +111,18 @@ python -m pytest
 
 ```bash
 cd cron-data
-docker build -t weather-api .
-docker run --rm -p 5000:5000 weather-api
+cp .env.example .env   # fill SUPABASE_* / WEATHER_API_KEY as needed
+docker compose up --build
 ```
 
-The container binds `0.0.0.0:5000` via Gunicorn.
+Or:
+
+```bash
+docker build -t weather-api .
+docker run --rm -p 5000:5000 --env-file .env -e WEATHER_API_HOST=0.0.0.0 weather-api
+```
+
+The container binds `0.0.0.0:5000` via Gunicorn. Do not bake secrets into the image; pass them with `--env-file` / Compose.
 
 ---
 
