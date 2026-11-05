@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 from app.modules.weather.repositories import (
     get_latest_lifestyle_insight,
@@ -30,7 +32,7 @@ def run_lifestyle_capture() -> dict:
 
 
 _LAUNDRY_WINDOW_HOURS = 3
-_OUTFIT_KEYS = ("temperature_2m", "precipitation", "wind_speed_10m")
+_CATALOG_PATH = Path(__file__).resolve().parents[1] / "lifestyle_evaluation.json"
 
 
 def _number(value: object) -> float | None:
@@ -48,18 +50,99 @@ def _floored_hour(stamp: object) -> str | None:
     return f"{date_part}T{time_part[:2]}:00"
 
 
-def _hour_at(hours: list, stamp: object) -> dict | None:
+def _same_hour(stored: object, stamp: object) -> bool:
     label = _floored_hour(stamp)
-    if label is None:
+    if label is None or not isinstance(stored, str):
+        return False
+    return stored == label or stored.startswith(label)
+
+
+def _hours_from_as_of(hours: list, as_of: object) -> list:
+    """First 3 stored hours starting at as_of. Empty when as_of is absent."""
+    for index, hour in enumerate(hours):
+        if isinstance(hour, dict) and _same_hour(hour.get("time"), as_of):
+            return [
+                item
+                for item in hours[index : index + _LAUNDRY_WINDOW_HOURS]
+                if isinstance(item, dict)
+            ]
+    return []
+
+
+def _with_wet_flag(hour: dict) -> dict:
+    view = dict(hour)
+    probability = _number(hour.get("precipitation_probability"))
+    amount = _number(hour.get("precipitation"))
+    if (probability is not None and probability >= 40) or (
+        amount is not None and amount >= 0.2
+    ):
+        view["flag"] = "Nguy cơ ướt"
+    return view
+
+
+def _pop_score(window: list) -> float | None:
+    if len(window) != _LAUNDRY_WINDOW_HOURS:
         return None
-    for hour in hours:
-        if isinstance(hour, dict) and hour.get("time") == label:
-            return hour
-    return None
+    total = 0.0
+    for hour in window:
+        probability = _number(hour.get("precipitation_probability"))
+        total += 0.0 if probability is None else probability
+    return total / _LAUNDRY_WINDOW_HOURS
+
+
+def _car_wash(window: list) -> dict | None:
+    """Mean stays the 3-hour PoP. A level matches when score_min <= mean <= score_max."""
+    score = _pop_score(window)
+    if score is None:
+        return None
+    result = {"score": score}
+    matches = []
+    for level in _catalog()["car_wash"]["levels"]:
+        if not isinstance(level, dict):
+            continue
+        low = 0.0 if level.get("score_min") is None else _number(level.get("score_min"))
+        high = _number(level.get("score_max"))
+        if low is None or high is None:
+            continue
+        if low <= score <= high:
+            matches.append(level)
+    if len(matches) == 1 and isinstance(matches[0].get("message"), str):
+        result["message"] = matches[0]["message"]
+    return result
+
+
+def _catalog() -> dict:
+    return json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))
+
+
+def _laundry_verdict(window: list) -> dict:
+    """Score is 100 minus the 3-hour PoP mean. The catalog row supplies the message."""
+    score = _pop_score(window)
+    if score is None:
+        return {}
+    rows = _catalog()["laundry"]["rows"]
+    chosen = None
+    for row in sorted(
+        rows,
+        key=lambda item: item["score_min"] if item.get("score_min") is not None else -1,
+        reverse=True,
+    ):
+        low = row.get("score_min")
+        if low is None or score >= low:
+            chosen = row
+            break
+    if chosen is None:
+        return {"score": score}
+    return {
+        "score": score,
+        "dry_time": chosen["dry_time"],
+        "status": chosen["status"],
+        "message": chosen["message"],
+    }
 
 
 def shape_lifestyle_reading(row: dict) -> dict:
-    """Latest stored series, 3-hour laundry window, current hour vs series min/max."""
+    """Latest stored series: 3-hour laundry window and the car-wash mean."""
     payload = row.get("payload")
     if not isinstance(payload, dict):
         raise ValueError("lifestyle payload must be an object")  # noqa: TRY004
@@ -67,42 +150,7 @@ def shape_lifestyle_reading(row: dict) -> dict:
     if not isinstance(hours, list):
         raise ValueError("lifestyle payload is missing hours")  # noqa: TRY004
 
-    window = [hour for hour in hours[:_LAUNDRY_WINDOW_HOURS] if isinstance(hour, dict)]
-    current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
-    outfit_hour = _hour_at(hours, current.get("time")) or _hour_at(hours, payload.get("as_of"))
-    if outfit_hour is None and hours and isinstance(hours[0], dict):
-        outfit_hour = hours[0]
-
-    series = {}
-    hour_view = {"time": outfit_hour.get("time") if outfit_hour else None}
-    compared = {}
-    for key in _OUTFIT_KEYS:
-        values = [
-            number
-            for number in (
-                _number(hour.get(key))
-                for hour in hours
-                if isinstance(hour, dict)
-            )
-            if number is not None
-        ]
-        low = min(values) if values else None
-        high = max(values) if values else None
-        series[key] = {"min": low, "max": high}
-        current_value = _number(outfit_hour.get(key)) if outfit_hour else None
-        hour_view[key] = outfit_hour.get(key) if outfit_hour else None
-        if current_value is None or low is None or high is None:
-            compared[key] = None
-        else:
-            compared[key] = {
-                "minus_min": current_value - low,
-                "minus_max": current_value - high,
-            }
-    if outfit_hour:
-        hour_view["weather_code"] = outfit_hour.get("weather_code")
-        hour_view["rain"] = outfit_hour.get("rain")
-        hour_view["showers"] = outfit_hour.get("showers")
-
+    window = _hours_from_as_of(hours, payload.get("as_of"))
     return {
         "id": row.get("id"),
         "location_key": row.get("location_key"),
@@ -112,16 +160,13 @@ def shape_lifestyle_reading(row: dict) -> dict:
         "laundry": {
             "window_hours": _LAUNDRY_WINDOW_HOURS,
             "hours_returned": len(window),
-            "hours": window,
+            "hours": [_with_wet_flag(hour) for hour in window],
+            **_laundry_verdict(window),
         },
-        "outfit": {
-            "hour": hour_view,
-            "series": series,
-            "compared_to_series": compared,
-        },
+        "car_wash": _car_wash(window),
     }
 
 
 def read_latest_lifestyle() -> dict:
-    """Read the newest lifestyle row and shape laundry plus outfit context."""
+    """Read the newest row: laundry and car wash use the first 3 hours from as_of."""
     return shape_lifestyle_reading(get_latest_lifestyle_insight())

@@ -12,7 +12,7 @@ PARAMS = {
     ),
     "hourly": (
         "temperature_2m,weather_code,precipitation_probability,precipitation,rain,showers,"
-        "wind_speed_10m,wind_gusts_10m"
+        "wind_speed_10m,wind_gusts_10m,apparent_temperature"
     ),
     "current": (
         "weather_code,temperature_2m,relative_humidity_2m,is_day,apparent_temperature,"

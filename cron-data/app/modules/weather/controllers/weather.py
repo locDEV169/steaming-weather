@@ -335,7 +335,7 @@ def post_lifestyle_insight():
 
 
 def get_lifestyle_insight():
-    """Return the newest lifestyle row: 3-hour laundry window and current-hour outfit."""
+    """Return the newest row: 3 hours from as_of, the laundry message, and the car-wash mean."""
     try:
         return jsonify(read_latest_lifestyle())
     except LifestyleNotFoundError:

@@ -164,7 +164,22 @@ _LIFESTYLE_HOUR_KEYS = (
     "showers",
     "wind_speed_10m",
     "wind_gusts_10m",
+    "apparent_temperature",
 )
+
+
+def _utc_label(stamp: object, source_tz: str) -> object:
+    """Wall time in source_tz, stored as an explicit UTC hour label."""
+    if not isinstance(stamp, str) or "T" not in stamp:
+        return stamp
+    text = stamp[:-1] + "+00:00" if stamp.endswith("Z") else stamp
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return stamp
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=ZoneInfo(source_tz))
+    return parsed.astimezone(ZoneInfo("UTC")).strftime("%Y-%m-%dT%H:%MZ")
 
 
 def _lifestyle_start_index(times: list, current_time: object) -> int:
@@ -200,22 +215,26 @@ def build_lifestyle_insight(forecast: dict) -> dict:
             raise ValueError(f"Response does not contain a valid hourly {key} series")
         series[key] = values
 
+    source_tz = forecast.get("timezone")
+    if not isinstance(source_tz, str) or not source_tz:
+        source_tz = _TIMEZONE
     current = forecast.get("current")
     current_time = current.get("time") if isinstance(current, dict) else None
     start = _lifestyle_start_index(times, current_time)
     end = min(start + _LIFESTYLE_WINDOW_HOURS, len(times))
     hours = []
     for index in range(start, end):
-        row = {"time": times[index]}
+        row = {"time": _utc_label(times[index], source_tz)}
         for key in _LIFESTYLE_HOUR_KEYS:
             row[key] = series[key][index]
         hours.append(row)
 
-    current_out = {"time": current_time}
+    current_out = {"time": _utc_label(current_time, source_tz)}
     if isinstance(current, dict):
         for key in (
             "temperature_2m",
             "weather_code",
+            "apparent_temperature",
             "precipitation",
             "rain",
             "showers",
@@ -232,8 +251,8 @@ def build_lifestyle_insight(forecast: dict) -> dict:
             "latitude": forecast.get("latitude", PARAMS["latitude"]),
             "longitude": forecast.get("longitude", PARAMS["longitude"]),
         },
-        "timezone": forecast.get("timezone", _TIMEZONE),
-        "as_of": times[start],
+        "timezone": "UTC",
+        "as_of": _utc_label(times[start], source_tz),
         "window_hours": _LIFESTYLE_WINDOW_HOURS,
         "hours_returned": len(hours),
         "current": current_out,

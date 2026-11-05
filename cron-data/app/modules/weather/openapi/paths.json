@@ -403,7 +403,7 @@
   "/api/v1/lifestyle-insights": {
     "get": {
       "summary": "Read the latest lifestyle context forecast",
-      "description": "Reads the lifestyle_insights row with the greatest fetched_at for the configured location. Returns a 3-hour laundry window from the start of that series and the current hour compared with min/max temperature, precipitation, and wind in the stored hours. Does not call Open-Meteo and does not write a verdict. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
+      "description": "Reads the lifestyle_insights row with the greatest fetched_at. Laundry and car wash use the first 3 stored hours from as_of. A laundry hour with precipitation probability >= 40 or precipitation >= 0.2 mm has flag Nguy cơ ướt. laundry.score is 100 minus the mean of those three probabilities, null as 0. laundry.message is the matching catalog sentence. car_wash.mean is that same mean. When the mean is inside one level score_min and score_max, car_wash.message is that level message. A null score_min counts as 0. No workout score. Does not call Open-Meteo. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
       "operationId": "getLifestyleInsight",
       "tags": [
         "lifestyle-insights"
@@ -418,7 +418,7 @@
       ],
       "responses": {
         "200": {
-          "description": "Latest stored lifestyle row, laundry window, and current-hour comparison.",
+          "description": "Latest stored lifestyle row, the first 3 hours from as_of, and the car-wash mean.",
           "content": {
             "application/json": {
               "schema": {
@@ -426,7 +426,7 @@
                 "required": [
                   "fetched_at",
                   "laundry",
-                  "outfit"
+                  "car_wash"
                 ],
                 "properties": {
                   "id": {
@@ -448,9 +448,10 @@
                     "type": "object",
                     "additionalProperties": true
                   },
-                  "outfit": {
+                  "car_wash": {
                     "type": "object",
-                    "additionalProperties": true
+                    "additionalProperties": true,
+                    "nullable": true
                   }
                 }
               }
@@ -501,7 +502,7 @@
     },
     "post": {
       "summary": "Append one lifestyle context forecast",
-      "description": "Fetches Open-Meteo and inserts one append-only row into lifestyle_insights (72 hours from now: temperature, weather code, precipitation, rain, showers, wind). Does not write weather_snapshots and does not run snapshot ingest. Requires WEATHER_API_KEY and Supabase service role env.",
+      "description": "Fetches Open-Meteo and inserts one append-only row into lifestyle_insights. Hour labels on the new row are UTC. Each new hour stores apparent_temperature from that hour. The 72-hour series keeps provider wind in km/h. Current may also include apparent_temperature when the provider sends it. Does not write weather_snapshots and does not run snapshot ingest. Requires WEATHER_API_KEY and Supabase service role env.",
       "operationId": "postLifestyleInsight",
       "tags": [
         "lifestyle-insights"

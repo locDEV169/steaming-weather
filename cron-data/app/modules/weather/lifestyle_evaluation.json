@@ -1,0 +1,157 @@
+{
+  "id": "lifestyle-evaluation",
+  "purpose": "Bộ quy chuẩn để đối chiếu dữ liệu. GET chọn dòng phơi đồ theo score_formula.",
+  "excluded_inputs": ["hourly_relative_humidity", "hourly_cloud_cover"],
+  "score_formula": "100 - trung bình precipitation_probability của 3 giờ từ as_of. Null tính là 0.",
+  "car_wash": {
+    "levels": [
+      {
+        "level": 1,
+        "label": "Rất nên rửa xe",
+        "score_min": 90,
+        "score_max": 100,
+        "all_of": [
+          "Cả 3 ngày tới: PoP ≤ 20%",
+          "Rain_sum = 0 mm",
+          "Bụi/AQI ở mức tốt hoặc trung bình"
+        ],
+        "message": "Thời tiết nắng ráo liên tục 3 ngày tới, hôm nay là thời điểm hoàn hảo để rửa xe."
+      },
+      {
+        "level": 2,
+        "label": "Có thể rửa",
+        "score_min": 65,
+        "score_max": 89,
+        "all_of": [
+          "Hôm nay và ngày mai tạnh ráo (PoP ≤ 25%)",
+          "Ngày thứ 3: 25% < PoP < 50%"
+        ],
+        "message": "Thời tiết đẹp trong 48h tới. Bạn có thể rửa xe nếu cần đi lại ngay."
+      },
+      {
+        "level": 3,
+        "label": "Cân nhắc / Chờ thêm",
+        "score_min": 40,
+        "score_max": 64,
+        "all_of": [
+          "Hôm nay tạnh",
+          "Ngày mai hoặc ngày kia: PoP ≥ 50% hoặc Rain_sum ≥ 3 mm"
+        ],
+        "message": "Hôm nay tạnh ráo nhưng dự báo ngày mai có mưa. Bạn nên hoãn lại để đỡ tốn chi phí."
+      },
+      {
+        "level": 4,
+        "label": "Không nên rửa xe",
+        "score_min": 0,
+        "score_max": 39,
+        "any_of": [
+          "Hôm nay có mưa (PoP ≥ 40% hoặc Rain_sum ≥ 1 mm)",
+          "2 ngày tới mưa to liên tục"
+        ],
+        "message": "Mưa lớn kéo dài trong 48h tới, tuyệt đối không nên rửa xe hôm nay."
+      }
+    ]
+  },
+  "outfit": {
+    "status": "excluded",
+    "score": null,
+    "t_feels_source": "apparent_temperature",
+    "rows": [
+      {
+        "t_feels_min": 35,
+        "t_feels_max": null,
+        "label": "Rất nóng",
+        "garment": "Đồ cotton/lanh rộng, cộc tay, thấm mồ hôi",
+        "accessories": "Mũ rộng vành, kính râm, kem chống nắng"
+      },
+      {
+        "t_feels_min": 28,
+        "t_feels_max": 34,
+        "label": "Nóng",
+        "garment": "Áo thun, quần soóc/quần mỏng nhẹ",
+        "accessories": "Kính râm, mang theo ô/dù"
+      },
+      {
+        "t_feels_min": 23,
+        "t_feels_max": 27,
+        "label": "Dễ chịu",
+        "garment": "Áo phông/sơ mi cộc/dài tay, quần dài",
+        "accessories": "Không cần áo khoác"
+      },
+      {
+        "t_feels_min": 19,
+        "t_feels_max": 22,
+        "label": "Se lạnh",
+        "garment": "Áo tay dài mỏng, blazer hoặc cardigan mỏng",
+        "accessories": "Áo khoác mỏng nhẹ nếu ra ngoài tối"
+      },
+      {
+        "t_feels_min": 15,
+        "t_feels_max": 18,
+        "label": "Lạnh nhẹ",
+        "garment": "Hoodie, áo len mỏng, áo khoác gió",
+        "accessories": "Khăn mỏng hoặc áo giữ nhiệt bên trong"
+      },
+      {
+        "t_feels_min": null,
+        "t_feels_max": 14,
+        "label": "Rất lạnh",
+        "garment": "Áo phao dày, áo dạ, quần dày dặn",
+        "accessories": "Khăn ấm, găng tay, mũ len"
+      }
+    ]
+  },
+  "laundry": {
+    "average_over": "3-4 giờ liên tục",
+    "rows": [
+      {
+        "score_min": 80,
+        "score_max": null,
+        "dry_time": "≈2-3 giờ",
+        "status": "Cực tốt",
+        "message": "Phơi đồ dày (chăn, jean), khô rất nhanh"
+      },
+      {
+        "score_min": 60,
+        "score_max": 79,
+        "dry_time": "≈3.5-5 giờ",
+        "status": "Tốt",
+        "message": "Quần áo thường khô hoàn toàn trong ngày"
+      },
+      {
+        "score_min": 40,
+        "score_max": 59,
+        "dry_time": ">6 giờ",
+        "status": "Trung bình",
+        "message": "Lâu khô, nên vắt ráo hoặc phơi nơi thoáng gió"
+      },
+      {
+        "score_min": null,
+        "score_max": 39,
+        "or": "có mưa",
+        "dry_time": "Không thể khô tự nhiên",
+        "status": "Không nên phơi",
+        "message": "Dễ ẩm mốc, nên dùng máy sấy hoặc phơi trong nhà"
+      }
+    ]
+  },
+  "unresolved": [
+    {
+      "id": "car-wash-window",
+      "winner": "3 giờ đầu từ as_of, trung bình precipitation_probability, null tính là 0. score_min null được tính là 0. Mean nằm trong score_min và score_max thì lấy message của mức đó.",
+      "catalog": "4 mức theo 3 ngày lịch, PoP ngày, Rain_sum mm, và 4 câu ở car_wash.",
+      "other_lock": "3 giờ đầu từ as_of, trung bình precipitation_probability, null tính là 0. Câu chỉ khi trung bình bằng 0: không nên rửa xe vì đang không đánh giá được thời tiết."
+    },
+    {
+      "id": "laundry-window",
+      "winner": null,
+      "catalog": "Điểm trung bình của 3-4 giờ liên tục.",
+      "other_lock": "Cửa sổ đọc là 3 giờ đầu từ as_of."
+    },
+    {
+      "id": "laundry-score",
+      "winner": "100 - trung bình precipitation_probability của 3 giờ từ as_of. Null tính là 0.",
+      "note": "Độ ẩm giờ và mây giờ được bỏ qua. Trọng số 0.25 / 0.35 / 0.20 / 0.20 không được dùng. Điểm tạm = 100 trừ trung bình PoP của 3 giờ từ as_of. Dòng phơi đồ chọn theo score_min, phần còn lại thuộc dòng < 40."
+    }
+  ]
+}
