@@ -10,6 +10,7 @@ from app.modules.weather.provider.config import PARAMS
 __all__ = [
     "BAND_TABLE_VERSION",
     "build_air_quality",
+    "build_lifestyle_insight",
     "build_weather_rainny",
     "european_aqi_band",
     "fetch_forecast",
@@ -151,6 +152,93 @@ def build_weather_rainny(forecast: dict, as_of: str | None = None) -> dict:
 
 def get_weather_rainny() -> dict:
     return build_weather_rainny(fetch_forecast())
+
+
+_LIFESTYLE_WINDOW_HOURS = 72
+_LIFESTYLE_HOUR_KEYS = (
+    "temperature_2m",
+    "weather_code",
+    "precipitation_probability",
+    "precipitation",
+    "rain",
+    "showers",
+    "wind_speed_10m",
+    "wind_gusts_10m",
+)
+
+
+def _lifestyle_start_index(times: list, current_time: object) -> int:
+    floored = None
+    if isinstance(current_time, str) and "T" in current_time:
+        date_part, time_part = current_time.split("T", 1)
+        if len(time_part) >= 2:
+            floored = f"{date_part}T{time_part[:2]}:00"
+    if floored in times:
+        return times.index(floored)
+
+    now_label = datetime.now(ZoneInfo(_TIMEZONE)).strftime("%Y-%m-%dT%H:00")
+    for index, stamp in enumerate(times):
+        if isinstance(stamp, str) and stamp >= now_label:
+            return index
+    return 0
+
+
+def build_lifestyle_insight(forecast: dict) -> dict:
+    """72-hour context series for lifestyle history. No hang/wash/outfit verdict."""
+    hourly = forecast.get("hourly")
+    if not isinstance(hourly, dict):
+        raise ValueError("Response does not contain a valid 'hourly' section")  # noqa: TRY004
+
+    times = hourly.get("time")
+    if not isinstance(times, list) or not times:
+        raise ValueError("Response does not contain a valid hourly time series")
+
+    series: dict[str, list] = {}
+    for key in _LIFESTYLE_HOUR_KEYS:
+        values = hourly.get(key)
+        if not isinstance(values, list) or len(values) != len(times):
+            raise ValueError(f"Response does not contain a valid hourly {key} series")
+        series[key] = values
+
+    current = forecast.get("current")
+    current_time = current.get("time") if isinstance(current, dict) else None
+    start = _lifestyle_start_index(times, current_time)
+    end = min(start + _LIFESTYLE_WINDOW_HOURS, len(times))
+    hours = []
+    for index in range(start, end):
+        row = {"time": times[index]}
+        for key in _LIFESTYLE_HOUR_KEYS:
+            row[key] = series[key][index]
+        hours.append(row)
+
+    current_out = {"time": current_time}
+    if isinstance(current, dict):
+        for key in (
+            "temperature_2m",
+            "weather_code",
+            "precipitation",
+            "rain",
+            "showers",
+            "wind_speed_10m",
+            "wind_gusts_10m",
+        ):
+            if key in current:
+                current_out[key] = current[key]
+
+    return {
+        "name": "Dự báo theo ngữ cảnh hành vi",
+        "name_en": "Lifestyle & Context-aware Insights",
+        "location": {
+            "latitude": forecast.get("latitude", PARAMS["latitude"]),
+            "longitude": forecast.get("longitude", PARAMS["longitude"]),
+        },
+        "timezone": forecast.get("timezone", _TIMEZONE),
+        "as_of": times[start],
+        "window_hours": _LIFESTYLE_WINDOW_HOURS,
+        "hours_returned": len(hours),
+        "current": current_out,
+        "hours": hours,
+    }
 
 
 def european_aqi_band(index: float) -> dict:

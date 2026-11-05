@@ -8,6 +8,7 @@ from flask import Flask
 from app.modules.weather.repositories.snapshots import (
     SnapshotNotFoundError,
     SupabaseReadError,
+    get_latest_lifestyle_insight,
     get_snapshot,
 )
 
@@ -81,3 +82,28 @@ def test_get_snapshot_http_error(app_ctx):
 def test_get_snapshot_rejects_unknown_kind(app_ctx):
     with pytest.raises(ValueError, match="Unsupported snapshot kind"):
         get_snapshot("nope")
+
+
+def test_latest_lifestyle_orders_by_fetched_at(app_ctx):
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = [
+        {
+            "id": 3,
+            "location_key": "da_nang",
+            "payload": {"hours": []},
+            "fetched_at": "2026-11-05T04:00:00+00:00",
+        }
+    ]
+
+    with patch(
+        "app.modules.weather.repositories.snapshots.requests.get",
+        return_value=response,
+    ) as get:
+        row = get_latest_lifestyle_insight()
+
+    assert row["id"] == 3
+    args, kwargs = get.call_args
+    assert args[0] == "https://example.supabase.co/rest/v1/lifestyle_insights"
+    assert kwargs["params"]["order"] == "fetched_at.desc"
+    assert kwargs["params"]["limit"] == "1"

@@ -19,3 +19,4 @@ def test_assemble_includes_weather_paths():
     assert "/api/v1/air-quality" in paths
     assert "/api/v1/snapshots/{slug}" in paths
     assert "/api/v1/ingest" in paths
+    assert "/api/v1/lifestyle-insights" in paths

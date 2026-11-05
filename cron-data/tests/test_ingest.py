@@ -1,7 +1,6 @@
 """Tests for snapshot ingest into Supabase."""
 
 from datetime import datetime, timezone
-from unittest.mock import patch
 
 import requests
 
@@ -100,6 +99,7 @@ def test_ingest_updates_all_kinds(client, monkeypatch):
     body = response.get_json()
     assert body["ok"] is True
     assert set(body["updated"]) == {"weather", "rainny", "air_quality"}
+    assert "lifestyle" not in body["results"]
     assert {kind for kind, _ in upserts} == {
         "weather",
         "rainny",
@@ -155,3 +155,4 @@ def test_ingest_partial_success_when_air_quality_fails(client, monkeypatch):
     assert "rainny" in body["updated"]
     assert "air_quality" not in body["updated"]
     assert body["results"]["air_quality"]["code"] == "UPSTREAM_TIMEOUT"
+    assert "lifestyle" not in body["results"]

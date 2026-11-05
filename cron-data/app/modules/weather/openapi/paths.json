@@ -399,5 +399,206 @@
         }
       }
     }
+  },
+  "/api/v1/lifestyle-insights": {
+    "get": {
+      "summary": "Read the latest lifestyle context forecast",
+      "description": "Reads the lifestyle_insights row with the greatest fetched_at for the configured location. Returns a 3-hour laundry window from the start of that series and the current hour compared with min/max temperature, precipitation, and wind in the stored hours. Does not call Open-Meteo and does not write a verdict. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
+      "operationId": "getLifestyleInsight",
+      "tags": [
+        "lifestyle-insights"
+      ],
+      "security": [
+        {
+          "ApiKeyAuth": []
+        },
+        {
+          "BearerAuth": []
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Latest stored lifestyle row, laundry window, and current-hour comparison.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fetched_at",
+                  "laundry",
+                  "outfit"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "location_key": {
+                    "type": "string"
+                  },
+                  "fetched_at": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "as_of": {
+                    "type": "string"
+                  },
+                  "laundry": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "outfit": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "Missing or invalid API key.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "No lifestyle row is stored.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        },
+        "502": {
+          "description": "Supabase read failed.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        },
+        "503": {
+          "description": "Supabase is not configured.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "summary": "Append one lifestyle context forecast",
+      "description": "Fetches Open-Meteo and inserts one append-only row into lifestyle_insights (72 hours from now: temperature, weather code, precipitation, rain, showers, wind). Does not write weather_snapshots and does not run snapshot ingest. Requires WEATHER_API_KEY and Supabase service role env.",
+      "operationId": "postLifestyleInsight",
+      "tags": [
+        "lifestyle-insights"
+      ],
+      "security": [
+        {
+          "ApiKeyAuth": []
+        },
+        {
+          "BearerAuth": []
+        }
+      ],
+      "responses": {
+        "201": {
+          "description": "One lifestyle history row was inserted.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "ok",
+                  "location_key",
+                  "fetched_at",
+                  "as_of",
+                  "hours_returned"
+                ],
+                "properties": {
+                  "ok": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "location_key": {
+                    "type": "string",
+                    "example": "da_nang"
+                  },
+                  "fetched_at": {
+                    "type": "string",
+                    "example": "2026-11-04T04:00:00+00:00"
+                  },
+                  "as_of": {
+                    "type": "string",
+                    "example": "2026-11-04T10:00"
+                  },
+                  "hours_returned": {
+                    "type": "integer",
+                    "example": 72
+                  }
+                }
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "Missing or invalid API key.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        },
+        "502": {
+          "description": "Upstream or Supabase write failed.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        },
+        "503": {
+          "description": "API key or Supabase is not configured.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        },
+        "504": {
+          "description": "Open-Meteo timed out.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

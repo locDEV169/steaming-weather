@@ -16,7 +16,9 @@
         "summary": "Get the current weather forecast",
         "description": "Fetches the configured forecast from Open-Meteo and returns the provider payload. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
         "operationId": "getWeatherForecast",
-        "tags": ["weather"],
+        "tags": [
+          "weather"
+        ],
         "security": [
           {},
           {
@@ -85,7 +87,9 @@
         "summary": "Get daily rainfall series for charting",
         "description": "Returns past, current, and future daily rain_sum values for Da Nang. The server derives as_of in Asia/Bangkok; no query params are required. Each day includes kind: past, current, or future. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
         "operationId": "getWeatherRainny",
-        "tags": ["weather"],
+        "tags": [
+          "weather_related"
+        ],
         "security": [
           {},
           {
@@ -154,7 +158,9 @@
         "summary": "Get current European AQI for Da Nang",
         "description": "Fetches current air quality from Open-Meteo Air Quality API and returns the provider payload plus additive results.overall (band from european_aqi) and results.summary (bilingual UI copy). No US AQI, no per-pollutant assessment. Summary text is informational band copy for display, not clinical advice. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
         "operationId": "getAirQuality",
-        "tags": ["weather"],
+        "tags": [
+          "weather_related"
+        ],
         "security": [
           {},
           {
@@ -223,7 +229,9 @@
         "summary": "Get a persisted Supabase weather snapshot",
         "description": "Reads the latest weather_snapshots row for the configured location and returns its payload only (same shape as the matching live endpoint). Slug is weather | rainny | air-quality. Does not call Open-Meteo. Requires prior POST /api/v1/ingest. API key auth is optional when WEATHER_API_KEY is set.",
         "operationId": "getWeatherSnapshot",
-        "tags": ["snapshots"],
+        "tags": [
+          "snapshots"
+        ],
         "security": [
           {},
           {
@@ -240,7 +248,11 @@
             "required": true,
             "schema": {
               "type": "string",
-              "enum": ["weather", "rainny", "air-quality"]
+              "enum": [
+                "weather",
+                "rainny",
+                "air-quality"
+              ]
             }
           }
         ],
@@ -314,7 +326,9 @@
         "summary": "Ingest shaped snapshots into Supabase",
         "description": "Fetches Open-Meteo weather and air quality, shapes rainny and AQ results, and upserts latest-only rows into weather_snapshots. Requires WEATHER_API_KEY and Supabase service role env. Partial per-kind updates are allowed. Cron is not required.",
         "operationId": "postWeatherIngest",
-        "tags": ["ingest"],
+        "tags": [
+          "ingest"
+        ],
         "security": [
           {
             "ApiKeyAuth": []
@@ -330,7 +344,12 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["ok", "fetched_at", "updated", "results"],
+                  "required": [
+                    "ok",
+                    "fetched_at",
+                    "updated",
+                    "results"
+                  ],
                   "properties": {
                     "ok": {
                       "type": "boolean",
@@ -345,7 +364,11 @@
                       "items": {
                         "type": "string"
                       },
-                      "example": ["weather", "rainny", "air_quality"]
+                      "example": [
+                        "weather",
+                        "rainny",
+                        "air_quality"
+                      ]
                     },
                     "results": {
                       "type": "object",
@@ -388,6 +411,207 @@
           }
         }
       }
+    },
+    "/api/v1/lifestyle-insights": {
+      "get": {
+        "summary": "Read the latest lifestyle context forecast",
+        "description": "Reads the lifestyle_insights row with the greatest fetched_at for the configured location. Returns a 3-hour laundry window from the start of that series and the current hour compared with min/max temperature, precipitation, and wind in the stored hours. Does not call Open-Meteo and does not write a verdict. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
+        "operationId": "getLifestyleInsight",
+        "tags": [
+          "ingest"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest stored lifestyle row, laundry window, and current-hour comparison.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "fetched_at",
+                    "laundry",
+                    "outfit"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "location_key": {
+                      "type": "string"
+                    },
+                    "fetched_at": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "as_of": {
+                      "type": "string"
+                    },
+                    "laundry": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "outfit": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No lifestyle row is stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Supabase read failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Supabase is not configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Append one lifestyle context forecast",
+        "description": "Fetches Open-Meteo and inserts one append-only row into lifestyle_insights (72 hours from now: temperature, weather code, precipitation, rain, showers, wind). Does not write weather_snapshots and does not run snapshot ingest. Requires WEATHER_API_KEY and Supabase service role env.",
+        "operationId": "postLifestyleInsight",
+        "tags": [
+          "ingest"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "One lifestyle history row was inserted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "location_key",
+                    "fetched_at",
+                    "as_of",
+                    "hours_returned"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "id": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "location_key": {
+                      "type": "string",
+                      "example": "da_nang"
+                    },
+                    "fetched_at": {
+                      "type": "string",
+                      "example": "2026-11-04T04:00:00+00:00"
+                    },
+                    "as_of": {
+                      "type": "string",
+                      "example": "2026-11-04T10:00"
+                    },
+                    "hours_returned": {
+                      "type": "integer",
+                      "example": 72
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream or Supabase write failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "API key or Supabase is not configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Open-Meteo timed out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -405,11 +629,16 @@
     "schemas": {
       "ApiErrorResponse": {
         "type": "object",
-        "required": ["error"],
+        "required": [
+          "error"
+        ],
         "properties": {
           "error": {
             "type": "object",
-            "required": ["code", "message"],
+            "required": [
+              "code",
+              "message"
+            ],
             "properties": {
               "code": {
                 "type": "string",
@@ -436,7 +665,11 @@
       },
       "WeatherForecast": {
         "type": "object",
-        "required": ["current", "hourly", "daily"],
+        "required": [
+          "current",
+          "hourly",
+          "daily"
+        ],
         "properties": {
           "latitude": {
             "type": "number",
@@ -467,7 +700,11 @@
       },
       "AirQualityOverallResult": {
         "type": "object",
-        "required": ["index", "band_code", "label_key"],
+        "required": [
+          "index",
+          "band_code",
+          "label_key"
+        ],
         "properties": {
           "index": {
             "type": "number",
@@ -563,7 +800,10 @@
       },
       "AirQuality": {
         "type": "object",
-        "required": ["current", "results"],
+        "required": [
+          "current",
+          "results"
+        ],
         "properties": {
           "latitude": {
             "type": "number",
@@ -579,7 +819,9 @@
           },
           "current": {
             "type": "object",
-            "required": ["european_aqi"],
+            "required": [
+              "european_aqi"
+            ],
             "properties": {
               "time": {
                 "type": "string",
@@ -624,7 +866,11 @@
       },
       "WeatherRainnyDay": {
         "type": "object",
-        "required": ["date", "rain_sum", "kind"],
+        "required": [
+          "date",
+          "rain_sum",
+          "kind"
+        ],
         "properties": {
           "date": {
             "type": "string",
@@ -637,18 +883,31 @@
           },
           "kind": {
             "type": "string",
-            "enum": ["past", "current", "future"],
+            "enum": [
+              "past",
+              "current",
+              "future"
+            ],
             "example": "current"
           }
         }
       },
       "WeatherRainny": {
         "type": "object",
-        "required": ["location", "timezone", "as_of", "unit", "days"],
+        "required": [
+          "location",
+          "timezone",
+          "as_of",
+          "unit",
+          "days"
+        ],
         "properties": {
           "location": {
             "type": "object",
-            "required": ["latitude", "longitude"],
+            "required": [
+              "latitude",
+              "longitude"
+            ],
             "properties": {
               "latitude": {
                 "type": "number",

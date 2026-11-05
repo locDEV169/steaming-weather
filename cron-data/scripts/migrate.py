@@ -67,7 +67,7 @@ def run_migration(sql_path: Path, database_url: str) -> None:
         raise SystemExit(
             "psql not found on PATH. Install PostgreSQL client tools, "
             "or run the SQL in Supabase SQL Editor "
-            f"({DEFAULT_MIGRATION.relative_to(CRON_DATA_ROOT)})."
+            f"({shown})."
         ) from exc
 
     if completed.returncode != 0:

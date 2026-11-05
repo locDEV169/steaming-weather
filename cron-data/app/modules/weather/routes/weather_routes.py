@@ -3,10 +3,12 @@
 from flask import Blueprint
 
 from app.modules.weather.controllers import (
+    get_lifestyle_insight,
     get_weather_air_quality,
     get_weather_forecast,
     get_weather_rainny_forecast,
     get_weather_snapshot,
+    post_lifestyle_insight,
     post_weather_ingest,
 )
 
@@ -36,3 +38,13 @@ def get_snapshot(slug: str):
 @weather_blueprint.post("/api/v1/ingest")
 def post_ingest():
     return post_weather_ingest()
+
+
+@weather_blueprint.post("/api/v1/lifestyle-insights")
+def post_lifestyle():
+    return post_lifestyle_insight()
+
+
+@weather_blueprint.get("/api/v1/lifestyle-insights")
+def get_lifestyle():
+    return get_lifestyle_insight()

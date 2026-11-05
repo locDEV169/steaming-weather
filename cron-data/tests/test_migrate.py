@@ -52,8 +52,12 @@ def test_run_migration_psql_missing_on_path(tmp_path):
         "scripts.migrate.subprocess.run",
         side_effect=FileNotFoundError("psql"),
     ):
-        with pytest.raises(SystemExit, match="psql not found"):
+        with pytest.raises(SystemExit, match="psql not found") as exc_info:
             run_migration(sql, "postgresql://u:p@host/db")
+
+    message = str(exc_info.value)
+    assert "001.sql" in message
+    assert "001_weather_snapshots.sql" not in message
 
 
 def test_default_migration_file_exists():

@@ -24,6 +24,10 @@ def test_request_uses_configured_open_meteo_parameters():
     assert PARAMS["longitude"] == 108.2022
     assert PARAMS["past_days"] == 7
     assert PARAMS["forecast_days"] == 7
+    assert "wind_speed_10m" in PARAMS["hourly"]
+    assert "showers" in PARAMS["hourly"]
+    assert "wind_speed_10m" in PARAMS["current"]
+    assert "precipitation_probability_max" in PARAMS["daily"]
     assert payload["current"] == {}
     assert payload["hourly"] == {}
     assert payload["daily"] == {}
@@ -47,6 +51,11 @@ def test_current_section_becomes_one_row():
         "relative_humidity_2m": 88,
         "is_day": 1,
         "apparent_temperature": 15.1,
+        "precipitation": 0.0,
+        "rain": 0.0,
+        "showers": 0.0,
+        "wind_speed_10m": 7.4,
+        "wind_gusts_10m": 22.7,
     }
 
     frame = to_frame("current", current)
@@ -64,6 +73,10 @@ def test_hourly_and_daily_sections_keep_timestamp_rows():
         "weather_code": [3, 2],
         "precipitation_probability": [10, 40],
         "precipitation": [0.0, 0.2],
+        "rain": [0.0, 0.1],
+        "showers": [0.0, 0.1],
+        "wind_speed_10m": [4.0, 6.0],
+        "wind_gusts_10m": [8.0, 12.0],
     }
     daily = {
         "time": ["2026-10-28", "2026-10-29"],
@@ -73,6 +86,10 @@ def test_hourly_and_daily_sections_keep_timestamp_rows():
         "sunset": ["2026-10-28T17:00", "2026-10-29T16:58"],
         "temperature_2m_max": [16.0, 17.0],
         "temperature_2m_min": [8.0, 9.0],
+        "precipitation_sum": [0.0, 1.2],
+        "precipitation_probability_max": [10, 40],
+        "wind_speed_10m_max": [11.0, 12.0],
+        "wind_gusts_10m_max": [20.0, 22.0],
     }
 
     hourly_frame = to_frame("hourly", hourly)

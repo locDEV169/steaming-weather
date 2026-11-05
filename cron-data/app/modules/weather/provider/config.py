@@ -6,9 +6,18 @@ API_URL = "https://api.open-meteo.com/v1/forecast"
 PARAMS = {
     "latitude": 16.0544,
     "longitude": 108.2022,
-    "daily": "weather_code,sunrise,rain_sum,sunset,temperature_2m_max,temperature_2m_min",
-    "hourly": "temperature_2m,weather_code,precipitation_probability,precipitation",
-    "current": "weather_code,temperature_2m,relative_humidity_2m,is_day,apparent_temperature",
+    "daily": (
+        "weather_code,sunrise,rain_sum,precipitation_sum,precipitation_probability_max,"
+        "sunset,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max"
+    ),
+    "hourly": (
+        "temperature_2m,weather_code,precipitation_probability,precipitation,rain,showers,"
+        "wind_speed_10m,wind_gusts_10m"
+    ),
+    "current": (
+        "weather_code,temperature_2m,relative_humidity_2m,is_day,apparent_temperature,"
+        "precipitation,rain,showers,wind_speed_10m,wind_gusts_10m"
+    ),
     "timezone": "Asia/Bangkok",
     "forecast_days": 7,
     "past_days": 7,
@@ -22,6 +31,11 @@ CURRENT_COLUMNS = [
     "relative_humidity_2m",
     "is_day",
     "apparent_temperature",
+    "precipitation",
+    "rain",
+    "showers",
+    "wind_speed_10m",
+    "wind_gusts_10m",
 ]
 
 HOURLY_COLUMNS = [
@@ -30,6 +44,10 @@ HOURLY_COLUMNS = [
     "weather_code",
     "precipitation_probability",
     "precipitation",
+    "rain",
+    "showers",
+    "wind_speed_10m",
+    "wind_gusts_10m",
 ]
 
 DAILY_COLUMNS = [
@@ -40,6 +58,10 @@ DAILY_COLUMNS = [
     "sunset",
     "temperature_2m_max",
     "temperature_2m_min",
+    "precipitation_sum",
+    "precipitation_probability_max",
+    "wind_speed_10m_max",
+    "wind_gusts_10m_max",
 ]
 # cron-data/data — this file lives at app/modules/weather/provider/
 OUTPUT_DIR = Path(__file__).resolve().parents[4] / "data"

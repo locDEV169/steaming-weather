@@ -33,7 +33,8 @@ cron-data/
 ├── tests/                            # Pytest
 ├── data/                             # JSON/CSV tạo bởi CLI (gitignore)
 ├── .env.example
-├── Dockerfile                        # COPY app; Gunicorn app:create_app()
+├── Dockerfile                        # COPY app; Gunicorn (env via --env-file / compose)
+├── docker-compose.yml                # build + env_file .env; force WEATHER_API_HOST=0.0.0.0
 ├── main.py                           # CLI tải dữ liệu và ghi file
 ├── run.py                            # Flask development server
 └── requirements.txt
@@ -50,7 +51,7 @@ cron-data/
 | `app/static/swagger.json` | Artifact assemble; Swagger UI đọc file này |
 | `app/modules/weather/` | routes → controllers → services → repositories |
 | `app/modules/weather/provider/` | Gọi Open-Meteo, transform, lưu file CLI |
-| `supabase/` | Migration SQL cho bảng `weather_snapshots` (latest-only jsonb) |
+| `supabase/` | Migration SQL: `weather_snapshots` (latest-only) và `lifestyle_insights` (append-only) |
 | `scripts/migrate.py` | Apply migration từ local (`psql` + `DATABASE_URL`) |
 | `scripts/assemble_openapi.py` | Ghép fragments → `app/static/swagger.json` |
 | `tests/` | Pytest cho API, domain, ingest |
@@ -75,9 +76,9 @@ Project dùng các tham số API sau:
 - Tọa độ trung tâm Đà Nẵng: latitude `16.0544`, longitude `108.2022`.
 - Timezone: `Asia/Bangkok` (GMT+7), cùng múi giờ với Việt Nam.
 - Cửa sổ thời gian: `past_days=7`, `forecast_days=7` (7 ngày quá khứ dạng archived forecast + 7 ngày dự báo).
-- Hiện tại: `weather_code`, `temperature_2m`, `relative_humidity_2m`, `is_day`, `apparent_temperature`.
-- Theo giờ: `temperature_2m`, `weather_code`, `precipitation_probability`, `precipitation`.
-- Theo ngày: `weather_code`, `sunrise`, `rain_sum`, `sunset`, `temperature_2m_max`, `temperature_2m_min`.
+- Hiện tại: `weather_code`, `temperature_2m`, `relative_humidity_2m`, `is_day`, `apparent_temperature`, `precipitation`, `rain`, `showers`, `wind_speed_10m`, `wind_gusts_10m`.
+- Theo giờ: `temperature_2m`, `weather_code`, `precipitation_probability`, `precipitation`, `rain`, `showers`, `wind_speed_10m`, `wind_gusts_10m`.
+- Theo ngày: `weather_code`, `sunrise`, `rain_sum`, `precipitation_sum`, `precipitation_probability_max`, `sunset`, `temperature_2m_max`, `temperature_2m_min`, `wind_speed_10m_max`, `wind_gusts_10m_max`.
 
 API nguồn Open-Meteo không cần API key. Auth cho Flask API là **optional** (xem middleware bên dưới).
 
@@ -146,7 +147,9 @@ API cung cấp:
 - `GET /api/v1/weather` — mỗi request gọi Open-Meteo trực tiếp qua `app/modules/weather/provider/api.py` và trả payload JSON gồm `current`, `hourly`, `daily` cùng metadata. Endpoint không đọc snapshot từ `data/open_meteo.json` và hiện chưa ghi lại file CSV/JSON.
 - `GET /api/v1/weather-rainny-forecast` — series lượng mưa theo ngày (past + current + future) để FE chart. Không cần query param; server lấy `as_of` theo `Asia/Bangkok`. Mỗi phần tử có `date`, `rain_sum`, và `kind` (`past` | `current` | `future`).
 - `GET /api/v1/air-quality` — mỗi request gọi Open-Meteo Air Quality API và trả payload upstream (European AQI + pollutants hiện tại cho Đà Nẵng) kèm `results.overall` (band từ `european_aqi`, bảng Open-Meteo/EEA 2024) và `results.summary` (nhãn/ý nghĩa song ngữ VI+EN để FE hiển thị). Không dùng US AQI; chưa có đánh giá từng pollutant. Text summary mang tính thông tin UI, không phải tư vấn y tế.
-- `POST /api/v1/ingest` — fetch + shape weather/rainny/air_quality rồi upsert vào Supabase (`weather_snapshots`). Cần `WEATHER_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Cron chưa gắn; gọi tay để seed. Partial update từng kind được phép.
+- `POST /api/v1/ingest` — fetch + shape weather/rainny/air_quality rồi upsert vào Supabase (`weather_snapshots`). Không ghi `lifestyle_insights`. Cần `WEATHER_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Cron chưa gắn; gọi tay để seed. Partial update từng kind được phép.
+- `POST /api/v1/lifestyle-insights` — API riêng: fetch Open-Meteo, cắt 72 giờ (nhiệt độ, mã thời tiết, mưa, gió) và **insert** một dòng vào `lifestyle_insights`. Không gọi `run_ingest()` và không ghi `weather_snapshots`. Cần cùng `WEATHER_API_KEY` và Supabase service role.
+- `GET /api/v1/lifestyle-insights` — đọc dòng `lifestyle_insights` có `fetched_at` mới nhất. Trả cửa sổ phơi đồ 3 giờ đầu chuỗi và giờ hiện tại so với min/max nhiệt độ, lượng mưa, gió của chuỗi đó. Không gọi Open-Meteo và không kết luận nên phơi hay mặc áo gì.
 - `GET /api/v1/snapshots/{weather|rainny|air-quality}` — đọc snapshot đã ingest từ Supabase và trả **payload** (cùng shape với live GET tương ứng). Không gọi Open-Meteo. 404 nếu chưa có row; cần `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
 
 ### Seed data lên Supabase (no-cron MVP)
@@ -161,7 +164,13 @@ cd cron-data
 python scripts/migrate.py
 ```
 
-Fallback nếu chưa có `psql`: mở **SQL Editor** trên Dashboard và chạy nội dung `supabase/migrations/001_weather_snapshots.sql`.
+Fallback nếu chưa có `psql`: mở **SQL Editor** trên Dashboard và chạy `supabase/migrations/001_weather_snapshots.sql`, rồi `002_lifestyle_insights.sql`.
+
+`002` tạo bảng lịch sử `lifestyle_insights`. Chạy riêng:
+
+```powershell
+python scripts/migrate.py supabase/migrations/002_lifestyle_insights.sql
+```
 
 3. Điền `cron-data/.env` (xem `.env.example`) — **không commit** service role / `DATABASE_URL`.
 4. Chạy Flask rồi ingest:
@@ -170,6 +179,7 @@ Fallback nếu chưa có `psql`: mở **SQL Editor** trên Dashboard và chạy 
 $env:WEATHER_API_KEY="your-local-key"
 # hoặc set trong .env rồi:
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5000/api/v1/ingest -Headers @{ "X-API-Key" = "your-local-key" }
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5000/api/v1/lifestyle-insights -Headers @{ "X-API-Key" = "your-local-key" }
 ```
 
 ```bash
@@ -202,12 +212,20 @@ Lỗi upstream trả JSON theo dạng `{"error":{"code":"...","message":"..."}}`
 
 Production nên chạy qua WSGI server thay vì Flask development server; khi container hóa, bind service vào `0.0.0.0` và giới hạn truy cập ở network layer.
 
-Build và chạy Docker từ thư mục `cron-data`:
+Build và chạy Docker từ thư mục `cron-data` (cần `.env` từ `.env.example` — Supabase/API key không được bake vào image):
+
+```powershell
+docker compose up --build
+```
+
+Hoặc tương đương:
 
 ```powershell
 docker build -t weather-api .
-docker run --rm -p 5000:5000 weather-api
+docker run --rm -p 5000:5000 --env-file .env -e WEATHER_API_HOST=0.0.0.0 weather-api
 ```
+
+`-e WEATHER_API_HOST=0.0.0.0` bắt buộc nếu `.env` local đang set `127.0.0.1` (tránh container chỉ listen localhost).
 
 ## Chạy kiểm thử
 
@@ -237,4 +255,11 @@ python3 -m venv path/to/venv
 source path/to/venv/bin/activate
 python3 -m pip install -r requirements.txt
 python3 run.py
+```
+
+
+## Noted: 
+```bash
+export PATH="/c/Program Files/PostgreSQL/18/bin:$PATH"
+psql --version
 ```
