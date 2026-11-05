@@ -82,7 +82,7 @@ export function makeDatasets(forecast, mode) {
       );
       return hourly.time.map((timestamp) => {
         const [date, time] = timestamp.split("T");
-        return time === "12:00" ? (byDay.get(date) ?? null) : null;
+        return time === "12:00" && byDay.get(date);
       });
     };
 
