@@ -83,7 +83,7 @@ export function fetchForecast(signal) {
   return loadWeatherJson(
     DATA_URL,
     signal,
-    (status) => `Không tải được dữ liệu dự báo.`,
+    (status) => `Không tải được dữ liệu dự báo (HTTP ${status}).`,
     isForecastPayload,
     "Phản hồi API thiếu các phần current, hourly hoặc daily.",
   );
@@ -93,7 +93,7 @@ export function fetchRainnyForecast(signal) {
   return loadWeatherJson(
     RAINNY_URL,
     signal,
-    (status) => `Không tải được dữ liệu lượng mưa.`,
+    (status) => `Không tải được dữ liệu lượng mưa (HTTP ${status}).`,
     isRainnyPayload,
     "Phản hồi API lượng mưa thiếu days hoặc kind không hợp lệ.",
   );
@@ -103,7 +103,7 @@ export function fetchAirQuality(signal) {
   return loadWeatherJson(
     AIR_QUALITY_URL,
     signal,
-    (status) => `Không tải được chất lượng không khí.`,
+    (status) => `Không tải được chất lượng không khí (HTTP ${status}).`,
     isAirQualityPayload,
     "Phản hồi API không khí thiếu results.summary hoặc overall.index.",
   );
