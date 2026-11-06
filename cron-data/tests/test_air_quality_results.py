@@ -63,6 +63,73 @@ def test_build_air_quality_adds_overall_results_and_summary():
     assert summary["meaning_en"]
     assert "us_aqi" not in enriched
     assert "us_aqi" not in enriched["current"]
+    assert "uv" not in enriched["results"]
+
+
+def test_build_air_quality_keeps_hourly_uv_and_summarizes_current():
+    payload = {
+        "current": {
+            "time": "2026-11-04T10:00",
+            "european_aqi": 32,
+            "uv_index": 4.2,
+        },
+        "hourly": {
+            "time": ["2026-11-04T09:00", "2026-11-04T10:00"],
+            "uv_index": [1.1, 4.2],
+            "pm2_5": [8.0, 9.0],
+        },
+    }
+
+    enriched = build_air_quality(payload)
+
+    assert enriched["hourly"]["uv_index"] == [1.1, 4.2]
+    assert enriched["results"]["uv"] == {
+        "index": 4.2,
+        "band_code": "moderate",
+        "level_vi": "Trung bình",
+        "level_en": "Moderate",
+        "meaning_vi": "Nên đội mũ, bôi kem chống nắng và tìm bóng râm giữa trưa.",
+        "meaning_en": "Wear a hat and sunscreen, and seek shade around midday.",
+    }
+
+
+def test_build_air_quality_summarizes_hourly_uv_at_current_time():
+    enriched = build_air_quality(
+        {
+            "current": {"time": "2026-11-04T11:00", "european_aqi": 32},
+            "hourly": {
+                "time": ["2026-11-04T10:00", "2026-11-04T11:00"],
+                "uv_index": [2.0, 11],
+            },
+        }
+    )
+
+    assert enriched["results"]["uv"]["index"] == 11
+    assert enriched["results"]["uv"]["band_code"] == "extreme"
+    assert enriched["results"]["uv"]["level_vi"] == "Cực cao"
+
+
+@pytest.mark.parametrize(
+    ("index", "band_code", "level_vi"),
+    [
+        (0, "low", "Thấp"),
+        (2.9, "low", "Thấp"),
+        (3, "moderate", "Trung bình"),
+        (5.9, "moderate", "Trung bình"),
+        (6, "high", "Cao"),
+        (7.9, "high", "Cao"),
+        (8, "very_high", "Rất cao"),
+        (10.9, "very_high", "Rất cao"),
+        (11, "extreme", "Cực cao"),
+    ],
+)
+def test_uv_summary_uses_who_bands(index, band_code, level_vi):
+    enriched = build_air_quality(
+        {"current": {"european_aqi": 32, "uv_index": index}}
+    )
+    assert enriched["results"]["uv"]["band_code"] == band_code
+    assert enriched["results"]["uv"]["level_vi"] == level_vi
+    assert enriched["results"]["uv"]["index"] == float(index)
 
 
 @pytest.mark.parametrize(

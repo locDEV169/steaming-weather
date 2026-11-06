@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from app.modules.weather.provider.air_quality import fetch_air_quality
 from app.modules.weather.provider.api import fetch_forecast
 from app.modules.weather.provider.config import PARAMS
+from app.modules.weather.utils.uv_index import UV_BANDS, UV_SUMMARY
 
 __all__ = [
     "BAND_TABLE_VERSION",
@@ -287,8 +288,47 @@ def european_aqi_band(index: float) -> dict:
     }
 
 
+def _finite_uv(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if value < 0:
+        return None
+    return float(value)
+
+
+def _uv_band_code(index: float) -> str:
+    for upper, band_code in UV_BANDS:
+        if index < upper:
+            return band_code
+    return "extreme"
+
+
+def _current_uv_index(payload: dict) -> float | None:
+    """Current UV, else the hourly value at current.time."""
+    current = payload.get("current")
+    current_time = current.get("time") if isinstance(current, dict) else None
+    if isinstance(current, dict):
+        number = _finite_uv(current.get("uv_index"))
+        if number is not None:
+            return number
+
+    hourly = payload.get("hourly")
+    if not isinstance(hourly, dict) or not isinstance(current_time, str):
+        return None
+    times = hourly.get("time")
+    values = hourly.get("uv_index")
+    if not isinstance(times, list) or not isinstance(values, list):
+        return None
+    if current_time not in times:
+        return None
+    slot = times.index(current_time)
+    if slot >= len(values):
+        return None
+    return _finite_uv(values[slot])
+
+
 def build_air_quality(payload: dict) -> dict:
-    """Attach overall EAQI results beside the upstream air-quality payload."""
+    """Attach EAQI results and, when present, hourly UV plus a UV summary."""
     current = payload.get("current")
     if not isinstance(current, dict):
         raise ValueError("Response does not contain a valid 'current' section")  # noqa: TRY004
@@ -299,6 +339,9 @@ def build_air_quality(payload: dict) -> dict:
     band_code = overall["band_code"]
     copy = _EAQI_SUMMARY[band_code]
     enriched = dict(payload)
+    hourly = payload.get("hourly")
+    if isinstance(hourly, dict) and isinstance(hourly.get("uv_index"), list):
+        enriched["hourly"] = hourly
     enriched["results"] = {
         "scale": "european_aqi",
         "band_table_version": BAND_TABLE_VERSION,
@@ -312,6 +355,18 @@ def build_air_quality(payload: dict) -> dict:
             "meaning_en": copy["meaning_en"],
         },
     }
+    uv_index = _current_uv_index(payload)
+    if uv_index is not None:
+        uv_code = _uv_band_code(uv_index)
+        uv_copy = UV_SUMMARY[uv_code]
+        enriched["results"]["uv"] = {
+            "index": uv_index,
+            "band_code": uv_code,
+            "level_vi": uv_copy["level_vi"],
+            "level_en": uv_copy["level_en"],
+            "meaning_vi": uv_copy["meaning_vi"],
+            "meaning_en": uv_copy["meaning_en"],
+        }
     return enriched
 
 

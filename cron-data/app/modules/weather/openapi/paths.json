@@ -144,7 +144,7 @@
   "/api/v1/air-quality": {
     "get": {
       "summary": "Get current European AQI for Da Nang",
-      "description": "Fetches current air quality from Open-Meteo Air Quality API and returns the provider payload plus additive results.overall (band from european_aqi) and results.summary (bilingual UI copy). No US AQI, no per-pollutant assessment. Summary text is informational band copy for display, not clinical advice. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
+      "description": "Fetches current air quality from Open-Meteo Air Quality API and returns the provider payload plus additive results.overall (band from european_aqi) and results.summary (bilingual UI copy). When hourly or current uv_index is present, the hourly series is kept and results.uv is the WHO band for the current UV value. No US AQI, no per-pollutant assessment. Summary text is informational band copy for display, not clinical advice. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
       "operationId": "getAirQuality",
       "tags": [
         "weather_related"

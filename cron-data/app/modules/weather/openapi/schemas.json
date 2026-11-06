@@ -131,6 +131,52 @@
       },
       "summary": {
         "$ref": "#/components/schemas/AirQualitySummary"
+      },
+      "uv": {
+        "$ref": "#/components/schemas/UvIndexSummary"
+      }
+    }
+  },
+  "UvIndexSummary": {
+    "type": "object",
+    "description": "WHO global solar UV index band for the current hour. Omitted when uv_index is absent.",
+    "required": [
+      "index",
+      "band_code",
+      "level_vi",
+      "level_en",
+      "meaning_vi",
+      "meaning_en"
+    ],
+    "properties": {
+      "index": {
+        "type": "number",
+        "example": 4.2
+      },
+      "band_code": {
+        "type": "string",
+        "enum": [
+          "low",
+          "moderate",
+          "high",
+          "very_high",
+          "extreme"
+        ],
+        "example": "moderate"
+      },
+      "level_vi": {
+        "type": "string",
+        "example": "Trung bình"
+      },
+      "level_en": {
+        "type": "string",
+        "example": "Moderate"
+      },
+      "meaning_vi": {
+        "type": "string"
+      },
+      "meaning_en": {
+        "type": "string"
       }
     }
   },
@@ -190,6 +236,28 @@
           "sulphur_dioxide": {
             "type": "number",
             "example": 1.1
+          },
+          "uv_index": {
+            "type": "number",
+            "example": 4.2
+          }
+        },
+        "additionalProperties": true
+      },
+      "hourly": {
+        "type": "object",
+        "properties": {
+          "time": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "uv_index": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
           }
         },
         "additionalProperties": true

@@ -8,8 +8,11 @@ API_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
 PARAMS = {
     "latitude": WEATHER_PARAMS["latitude"],
     "longitude": WEATHER_PARAMS["longitude"],
+    "hourly": (
+        "pm10,pm2_5,uv_index"
+    ),
     "current": (
-        "european_aqi,pm2_5,pm10,nitrogen_dioxide,ozone,sulphur_dioxide"
+        "european_aqi,pm2_5,pm10,nitrogen_dioxide,ozone,sulphur_dioxide,pm10,pm2_5,uv_index"
     ),
     "timezone": WEATHER_PARAMS["timezone"],
 }
