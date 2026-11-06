@@ -82,6 +82,14 @@ export function joinHourlyPrecipProbability(forecast) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+export function currentDayRainSum(rainny) {
+  const days = rainny?.days;
+  if (!Array.isArray(days)) return null;
+  const today = days.find((day) => day?.kind === "current");
+  const value = today?.rain_sum;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 export function timestampLabel(value, mode) {
   if (mode === "daily") {
     return new Intl.DateTimeFormat("vi-VN", {

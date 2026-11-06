@@ -1,10 +1,11 @@
+import { seriesColors } from "../common/colors.js";
 import { timestampLabel } from "../lib/weather.js";
-import { chartColors } from "./chart-config.js";
 
-export const rainKindColors = {
-  past: "rgba(120, 152, 206, 0.85)",
-  current: "rgba(255, 116, 77, 0.92)",
-  future: "rgba(67, 198, 232, 0.85)",
+const chartColors = seriesColors;
+const rainKindColors = {
+  past: seriesColors.rainPast,
+  current: seriesColors.rainCurrent,
+  future: seriesColors.rainFuture,
 };
 
 export function makeRainDatasets(days) {

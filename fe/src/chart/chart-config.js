@@ -1,13 +1,5 @@
+import { seriesColors as chartColors } from "../common/colors.js";
 import { describeWeather, timestampLabel } from "../lib/weather.js";
-
-export const chartColors = {
-  temperature: "#43c6e8",
-  rain: "#ff744d",
-  max: "#7898ce",
-  min: "#e78bd1",
-  axis: "#aebbc5",
-  grid: "rgba(195, 209, 220, 0.18)",
-};
 
 export function makeDatasets(forecast, mode) {
   const { hourly, daily } = forecast;
@@ -19,7 +11,7 @@ export function makeDatasets(forecast, mode) {
         label: "Lượng mưa",
         data: daily.rain_sum,
         yAxisID: "rain",
-        backgroundColor: "rgba(255, 116, 77, 0.82)",
+        backgroundColor: chartColors.rainBarDaily,
         borderColor: chartColors.rain,
         borderWidth: 1,
         barPercentage: 0.19,
@@ -65,7 +57,7 @@ export function makeDatasets(forecast, mode) {
       data: hourly.temperature_2m,
       yAxisID: "temperature",
       borderColor: chartColors.temperature,
-      backgroundColor: "rgba(67, 198, 232, 0.08)",
+      backgroundColor: chartColors.temperatureFill,
       borderWidth: 1.6,
       pointRadius: 0,
       pointHitRadius: 8,
@@ -91,7 +83,7 @@ export function makeDatasets(forecast, mode) {
       label: "Lượng mưa",
       data: dailyValues("rain_sum"),
       yAxisID: "rain",
-      backgroundColor: "rgba(255, 116, 77, 0.88)",
+      backgroundColor: chartColors.rainBar,
       borderColor: chartColors.rain,
       borderWidth: 1,
       barThickness: 5,
@@ -256,7 +248,7 @@ export function chartOptions(forecast, mode, timestamps, codes) {
       temperature: {
         type: "linear",
         position: "left",
-        title: { display: true, text: "°C", color: "#aebbc5", align: "end" },
+        title: { display: true, text: "°C", color: chartColors.axis, align: "end" },
         grid: { color: chartColors.grid, drawTicks: true },
         border: { display: false },
         ticks: {
@@ -270,7 +262,7 @@ export function chartOptions(forecast, mode, timestamps, codes) {
         type: "linear",
         position: "right",
         display: mode !== "hourly",
-        title: { display: true, text: "mm", color: "#aebbc5", align: "end" },
+        title: { display: true, text: "mm", color: chartColors.axis, align: "end" },
         grid: { drawOnChartArea: false },
         border: { display: false },
         ticks: {

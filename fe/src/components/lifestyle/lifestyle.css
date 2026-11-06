@@ -1,0 +1,389 @@
+.page-switch {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.page-switch a {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font: 600 13px "Manrope", sans-serif;
+  text-decoration: none;
+}
+
+.page-switch a[aria-current="page"] {
+  color: #07111c;
+  background: var(--cyan);
+  border-color: transparent;
+}
+
+.life-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 0 0 12px;
+}
+
+.life-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.life-hero .now-card {
+  margin-top: 0;
+  height: 100%;
+}
+
+.life-card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(16, 28, 40, 0.72);
+}
+
+.life-note {
+  padding: 22px 22px 18px;
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  border-radius: 24px;
+  background: linear-gradient(
+    145deg,
+    rgba(49, 46, 129, 0.45),
+    rgba(15, 23, 42, 0.9) 58%,
+    rgba(15, 23, 42, 0.96)
+  );
+}
+
+.life-kicker {
+  margin: 0 0 8px;
+  color: var(--cyan);
+  font: 700 11px "Manrope", sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.life-note h2,
+.life-section h2,
+.life-card h3 {
+  margin: 0;
+  color: #f0f3f5;
+}
+
+.life-card p,
+.life-dayline,
+.life-section-head p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.life-note h2 {
+  color: #fff;
+}
+
+.life-note p {
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.life-note .life-kicker {
+  color: #67e8f9;
+}
+
+.life-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.life-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.life-tabs button {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: 600 12px "Manrope", sans-serif;
+  padding: 8px 10px;
+}
+
+.life-tabs button.is-active {
+  background: var(--cyan);
+  color: #07111c;
+}
+
+.life-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.life-card {
+  padding: 18px;
+}
+
+.life-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.life-card header span {
+  color: #d5dee6;
+  font: 600 12px "Manrope", sans-serif;
+}
+
+.life-title-mark {
+  margin-right: 8px;
+  color: #f5ca78;
+}
+
+.life-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.life-card-id {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.life-card-id p {
+  margin: 4px 0 0;
+}
+
+.life-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.life-icon--sun {
+  color: #67e8f9;
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+}
+
+.life-icon--shirt {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+}
+
+.life-icon--walk {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+}
+
+.life-icon--wash {
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.28);
+}
+
+.life-badge {
+  padding: 6px 10px;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #a7f3d0;
+  font: 600 12px "Manrope", sans-serif;
+  white-space: nowrap;
+}
+
+.life-badge--outfit {
+  border-color: rgba(99, 102, 241, 0.28);
+  background: rgba(99, 102, 241, 0.1);
+  color: #c7d2fe;
+}
+
+.life-badge--wash {
+  border-color: rgba(244, 63, 94, 0.35);
+  background: rgba(244, 63, 94, 0.12);
+  color: #fecdd3;
+}
+
+.life-highlight,
+.life-alert {
+  margin: 0 0 12px;
+  padding: 14px;
+  border-radius: 14px;
+}
+
+.life-highlight {
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(6, 78, 59, 0.35);
+}
+
+.life-highlight p,
+.life-alert {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.life-highlight p {
+  color: #6ee7b7;
+  font: 600 12px "Manrope", sans-serif;
+}
+
+.life-highlight strong {
+  display: block;
+  margin-top: 6px;
+  color: #fff;
+  font: 800 16px "Manrope", sans-serif;
+}
+
+.life-alert {
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  background: rgba(136, 19, 55, 0.22);
+  color: #e2e8f0;
+}
+
+.life-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.life-metrics div,
+.life-outfit-row {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(7, 17, 28, 0.55);
+}
+
+.life-metrics p,
+.life-outfit-row p,
+.life-bar-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.life-metrics strong,
+.life-outfit-row strong {
+  display: block;
+  margin-top: 6px;
+  color: #f0f3f5;
+  font: 700 14px "Manrope", sans-serif;
+}
+
+.life-outfit-row {
+  margin-bottom: 10px;
+}
+
+.life-outfit-row p {
+  color: #f5ca78;
+  font: 700 11px "Manrope", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.life-outfit-row + .life-outfit-row p {
+  color: #7dd3fc;
+}
+
+.life-bar-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.life-bar {
+  height: 8px;
+  margin: 0 0 12px;
+  border-radius: 999px;
+  background: rgba(191, 207, 220, 0.12);
+  overflow: hidden;
+}
+
+.life-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22d3ee, #34d399);
+}
+
+.life-tip {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(7, 17, 28, 0.4);
+}
+
+.life-tip span {
+  color: #f0f3f5;
+  font-weight: 600;
+}
+
+.life-rain {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.life-rain li {
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.life-rain span,
+.life-empty,
+.life-error {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.life-error {
+  color: #ff9a83;
+}
+
+.life-rain strong {
+  color: #f0f3f5;
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  .life-hero,
+  .life-grid,
+  .life-section-head {
+    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

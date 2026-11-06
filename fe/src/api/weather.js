@@ -1,6 +1,7 @@
 export const DATA_URL = "/api/v1/weather";
 export const RAINNY_URL = "/api/v1/weather-rainny-forecast";
 export const AIR_QUALITY_URL = "/api/v1/air-quality";
+export const LIFESTYLE_URL = "/api/v1/lifestyle-insights";
 
 const weatherApiKey = (import.meta.env.VITE_WEATHER_API_KEY || "").trim();
 
@@ -106,5 +107,19 @@ export function fetchAirQuality(signal) {
     (status) => `Không tải được chất lượng không khí (HTTP ${status}).`,
     isAirQualityPayload,
     "Phản hồi API không khí thiếu results.summary hoặc overall.index.",
+  );
+}
+
+export function isLifestylePayload(data) {
+  return Boolean(data?.laundry && data?.car_wash);
+}
+
+export function fetchLifestyle(signal) {
+  return loadWeatherJson(
+    LIFESTYLE_URL,
+    signal,
+    (status) => `Không tải được đánh giá lối sống`,
+    isLifestylePayload,
+    "Phản hồi lối sống thiếu laundry hoặc car_wash.",
   );
 }
