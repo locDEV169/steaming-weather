@@ -1,0 +1,2 @@
+# Keep shell scripts LF so Alpine/Linux shebangs work in Docker.
+*.sh text eol=lf

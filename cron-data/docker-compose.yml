@@ -1,0 +1,33 @@
+services:
+  weather-api:
+    build: .
+    image: weather-api:latest
+    ports:
+      - "${WEATHER_API_PORT:-7500}:7500"
+    env_file:
+      - .env
+    environment:
+      # Must win over WEATHER_API_HOST=127.0.0.1 from local .env
+      WEATHER_API_HOST: "0.0.0.0"
+      # Align container listen port with published mapping above.
+      WEATHER_API_PORT: "7500"
+      # Secrets (WEATHER_API_KEY, SUPABASE_*) come from env_file .env only.
+    restart: unless-stopped
+
+  # Scheduled POST /api/v1/current-weather (ingest + Telegram).
+  # Defaults: hourly, both da_nang and sai_gon. Override via .env.
+  current-weather-cron:
+    build:
+      context: .
+      dockerfile: Dockerfile.cron
+    image: weather-current-weather-cron:latest
+    depends_on:
+      - weather-api
+    env_file:
+      - .env
+    environment:
+      WEATHER_API_BASE_URL: "http://weather-api:7500"
+      # WEATHER_API_KEY comes from env_file .env (must match weather-api).
+      CURRENT_WEATHER_CRON_LOCATIONS: ${CURRENT_WEATHER_CRON_LOCATIONS:-da_nang,sai_gon}
+      CURRENT_WEATHER_CRON_SCHEDULE: ${CURRENT_WEATHER_CRON_SCHEDULE:-0 * * * *}
+    restart: unless-stopped
