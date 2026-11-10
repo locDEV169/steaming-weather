@@ -4,7 +4,7 @@ Flask API và CLI lấy dự báo thời tiết từ [Open-Meteo Forecast API](h
 
 ## Cấu trúc
 
-Tên folder `cron-data` là lịch sử monorepo; hiện tại đây là **Flask weather API + CLI**, kèm ingest tay lên Supabase (chưa gắn scheduler).
+Tên folder `cron-data` là lịch sử monorepo; hiện tại đây là **Flask weather API + CLI**, kèm ingest lên Supabase. Scheduler Docker (sidecar) gọi `POST /api/v1/current-weather`.
 
 ```text
 cron-data/
@@ -34,7 +34,10 @@ cron-data/
 ├── data/                             # JSON/CSV tạo bởi CLI (gitignore)
 ├── .env.example
 ├── Dockerfile                        # COPY app; Gunicorn (env via --env-file / compose)
-├── docker-compose.yml                # build + env_file .env; force WEATHER_API_HOST=0.0.0.0
+├── Dockerfile.cron                   # Alpine + curl + crond sidecar
+├── docker-compose.yml                # weather-api + current-weather-cron
+├── scripts/cron_current_weather.sh   # POST current-weather per location
+├── scripts/docker_cron_entrypoint.sh # Install crontab from env, run crond
 ├── main.py                           # CLI tải dữ liệu và ghi file
 ├── run.py                            # Flask development server
 └── requirements.txt
@@ -212,13 +215,32 @@ Lỗi upstream trả JSON theo dạng `{"error":{"code":"...","message":"..."}}`
 
 Production nên chạy qua WSGI server thay vì Flask development server; khi container hóa, bind service vào `0.0.0.0` và giới hạn truy cập ở network layer.
 
-Build và chạy Docker từ thư mục `cron-data` (cần `.env` từ `.env.example` — Supabase/API key không được bake vào image):
+Build và chạy Docker từ thư mục `cron-data` (cần `.env` từ `.env.example` — Supabase/API key/Telegram không được bake vào image):
 
 ```powershell
 docker compose up --build
 ```
 
-Hoặc tương đương:
+Compose chạy hai service:
+
+| Service | Việc |
+| --- | --- |
+| `weather-api` | Gunicorn API (port host `${WEATHER_API_PORT:-7500}`) |
+| `current-weather-cron` | `crond` sidecar: `POST /api/v1/current-weather` theo lịch |
+
+Cron defaults (override trong `.env`):
+
+- `CURRENT_WEATHER_CRON_SCHEDULE=0 * * * *` (mỗi giờ)
+- `CURRENT_WEATHER_CRON_LOCATIONS=da_nang,sai_gon`
+- `WEATHER_API_KEY` phải khớp key của API
+
+Chạy tay một vòng (trong container cron hoặc host có `curl`):
+
+```powershell
+docker compose exec current-weather-cron /usr/local/bin/cron_current_weather.sh
+```
+
+Hoặc chỉ build API (không cron):
 
 ```powershell
 docker build -t weather-api .

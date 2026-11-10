@@ -417,6 +417,10 @@
       },
       "location_key": {
         "type": "string",
+        "enum": [
+          "da_nang",
+          "sai_gon"
+        ],
         "example": "da_nang"
       },
       "fetched_at": {
@@ -447,6 +451,10 @@
       },
       "location_key": {
         "type": "string",
+        "enum": [
+          "da_nang",
+          "sai_gon"
+        ],
         "example": "da_nang"
       },
       "fetched_at": {

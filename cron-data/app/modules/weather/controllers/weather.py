@@ -1,7 +1,7 @@
 """Translate weather service outcomes into HTTP responses."""
 
 import requests  # noqa: I001
-from flask import current_app, jsonify
+from flask import current_app, jsonify, request
 
 from app.modules.weather.repositories import (
     SNAPSHOT_KINDS,
@@ -12,6 +12,9 @@ from app.modules.weather.repositories import (
     SupabaseReadError,
     SupabaseWriteError,
     get_snapshot,
+)
+from app.modules.weather.provider.current_weather import (
+    resolve_current_weather_location,
 )
 from app.modules.weather.provider.telegram import (
     TelegramConfigError,
@@ -343,10 +346,33 @@ def post_lifestyle_insight():
         )
 
 
+def _resolve_current_weather_location_param():
+    """Parse ?location= query param. Returns (key, error_response)."""
+    raw = request.args.get("location")
+    try:
+        return resolve_current_weather_location(raw), None
+    except ValueError:
+        return None, (
+            jsonify(
+                error={
+                    "code": "INVALID_LOCATION",
+                    "message": (
+                        "location must be one of: da_nang, sai_gon "
+                        "(default da_nang when omitted)."
+                    ),
+                }
+            ),
+            400,
+        )
+
+
 def get_current_weather_report():
     """Return the latest stored current_weather row. No Telegram side effects."""
+    location_key, error = _resolve_current_weather_location_param()
+    if error is not None:
+        return error
     try:
-        return jsonify(read_latest_current_weather()), 200
+        return jsonify(read_latest_current_weather(location_key=location_key)), 200
     except CurrentWeatherNotFoundError:
         return (
             jsonify(
@@ -383,6 +409,10 @@ def get_current_weather_report():
 
 def post_current_weather_report():
     """Fetch current weather, insert current_weather, notify Telegram."""
+    location_key, error = _resolve_current_weather_location_param()
+    if error is not None:
+        return error
+
     api_key = (current_app.config.get("WEATHER_API_KEY") or "").strip()
     if not api_key:
         return (
@@ -428,7 +458,7 @@ def post_current_weather_report():
         )
 
     try:
-        return jsonify(run_current_weather_report()), 200
+        return jsonify(run_current_weather_report(location_key=location_key)), 200
     except requests.Timeout:
         return (
             jsonify(

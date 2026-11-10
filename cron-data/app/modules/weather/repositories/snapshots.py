@@ -182,15 +182,16 @@ def get_latest_lifestyle_insight() -> dict:
     return row
 
 
-def get_current_weather() -> dict:
-    """Return the current_weather row with the greatest fetched_at for this location."""
-    base_url, service_key, location_key = _require_supabase_config()
+def get_current_weather(location_key: str | None = None) -> dict:
+    """Return the newest current_weather row for the given (or config) location."""
+    base_url, service_key, default_location = _require_supabase_config()
+    key = (location_key or default_location).strip() or default_location
     try:
         response = requests.get(
             f"{base_url}/rest/v1/current_weather",
             params={
                 "select": "id,location_key,payload,fetched_at",
-                "location_key": f"eq.{location_key}",
+                "location_key": f"eq.{key}",
                 "order": "fetched_at.desc",
                 "limit": "1",
             },
@@ -217,33 +218,36 @@ def get_current_weather() -> dict:
         ) from exc
     if not isinstance(rows, list) or not rows:
         raise CurrentWeatherNotFoundError(
-            f"No current weather found for location={location_key!r}."
+            f"No current weather found for location={key!r}."
         )
     row = rows[0]
     if not isinstance(row, dict) or not isinstance(row.get("payload"), dict):
         raise SupabaseReadError("Supabase current_weather row is invalid.")
     return {
         "id": row.get("id"),
-        "location_key": row.get("location_key", location_key),
+        "location_key": row.get("location_key", key),
         "fetched_at": row.get("fetched_at"),
         "payload": row["payload"],
     }
 
 
 def insert_current_weather(
-    payload: dict, fetched_at: datetime | None = None
+    payload: dict,
+    fetched_at: datetime | None = None,
+    location_key: str | None = None,
 ) -> dict:
     """Append one current_weather row. Never updates an existing row."""
     if not isinstance(payload, dict):
         raise TypeError("payload must be a JSON object")
 
-    base_url, service_key, location_key = _require_supabase_config()
+    base_url, service_key, default_location = _require_supabase_config()
+    key = (location_key or default_location).strip() or default_location
     when = fetched_at or datetime.now(timezone.utc)  # noqa: UP017
     if when.tzinfo is None:
         when = when.replace(tzinfo=timezone.utc)  # noqa: UP017
     fetched_at_iso = when.isoformat()
     body = {
-        "location_key": location_key,
+        "location_key": key,
         "payload": payload,
         "fetched_at": fetched_at_iso,
     }
@@ -273,7 +277,7 @@ def insert_current_weather(
     row = rows[0] if isinstance(rows, list) and rows else body
     return {
         "id": row.get("id"),
-        "location_key": row.get("location_key", location_key),
+        "location_key": row.get("location_key", key),
         "fetched_at": row.get("fetched_at", fetched_at_iso),
     }
 

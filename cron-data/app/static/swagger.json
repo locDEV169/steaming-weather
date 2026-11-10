@@ -415,7 +415,7 @@
     "/api/v1/current-weather": {
       "get": {
         "summary": "Read the latest stored current weather",
-        "description": "Reads the newest current_weather row for the configured location from Supabase (order by fetched_at desc). Returns id, location_key, fetched_at, and the stored payload (Open-Meteo current fields plus optional WMO evaluation). Does not call Open-Meteo, does not insert, and does not send Telegram. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
+        "description": "Reads the newest current_weather row for the requested location from Supabase (order by fetched_at desc). Query param location is an enum: da_nang (default) or sai_gon. Returns id, location_key, fetched_at, and the stored payload (Open-Meteo current fields plus optional WMO evaluation). Does not call Open-Meteo, does not insert, and does not send Telegram. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
         "operationId": "getCurrentWeather",
         "tags": [
           "current-weather"
@@ -428,6 +428,22 @@
             "BearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "name": "location",
+            "in": "query",
+            "required": false,
+            "description": "Location key. Defaults to da_nang when omitted.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "da_nang",
+                "sai_gon"
+              ],
+              "default": "da_nang"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Latest stored current_weather row.",
@@ -435,6 +451,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CurrentWeatherStored"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid location query param.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
                 }
               }
             }
@@ -450,7 +476,7 @@
             }
           },
           "404": {
-            "description": "No current_weather row is stored yet.",
+            "description": "No current_weather row is stored yet for the location.",
             "content": {
               "application/json": {
                 "schema": {
@@ -483,7 +509,7 @@
       },
       "post": {
         "summary": "Fetch current weather, insert Supabase, notify Telegram",
-        "description": "Fetches Open-Meteo current weather for Da Nang (user curl fields including cloud_cover), shapes the payload, attaches Key WMO evaluation when weather_code maps, inserts a new append-only current_weather row, then sends a Telegram message. Requires WEATHER_API_KEY, Supabase service role env, TELEGRAM_BOT_TOKEN, and TELEGRAM_CHAT_ID.",
+        "description": "Fetches Open-Meteo current weather for the requested location (da_nang default; sai_gon uses 10.762622, 106.660172), shapes the payload, attaches Key WMO evaluation when weather_code maps, inserts a new append-only current_weather row, then sends a Telegram message. Requires WEATHER_API_KEY, Supabase service role env, TELEGRAM_BOT_TOKEN, and TELEGRAM_CHAT_ID.",
         "operationId": "postCurrentWeather",
         "tags": [
           "current-weather"
@@ -496,6 +522,22 @@
             "BearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "name": "location",
+            "in": "query",
+            "required": false,
+            "description": "Location key. Defaults to da_nang when omitted.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "da_nang",
+                "sai_gon"
+              ],
+              "default": "da_nang"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Current weather was inserted and Telegram was notified.",
@@ -503,6 +545,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CurrentWeatherReportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid location query param.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
                 }
               }
             }
@@ -1224,6 +1276,10 @@
           },
           "location_key": {
             "type": "string",
+            "enum": [
+              "da_nang",
+              "sai_gon"
+            ],
             "example": "da_nang"
           },
           "fetched_at": {
@@ -1254,6 +1310,10 @@
           },
           "location_key": {
             "type": "string",
+            "enum": [
+              "da_nang",
+              "sai_gon"
+            ],
             "example": "da_nang"
           },
           "fetched_at": {

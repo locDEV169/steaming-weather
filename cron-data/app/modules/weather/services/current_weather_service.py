@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.modules.weather.provider.current_weather import fetch_current_weather
+from app.modules.weather.provider.current_weather import (
+    CURRENT_WEATHER_LOCATIONS,
+    DEFAULT_LOCATION_KEY,
+    fetch_current_weather,
+    resolve_current_weather_location,
+)
 from app.modules.weather.provider.telegram import send_telegram_message
 from app.modules.weather.repositories import (
     get_current_weather,
@@ -14,9 +19,12 @@ from app.modules.weather.utils.weather_describe import describe_weather_vi
 from app.modules.weather.utils.wmo_weather_code import wmo_weather_evaluation
 
 
-def read_latest_current_weather() -> dict:
+def read_latest_current_weather(
+    location_key: str | None = None,
+) -> dict:
     """Read the latest stored current_weather row. No fetch, insert, or Telegram."""
-    return get_current_weather()
+    key = resolve_current_weather_location(location_key)
+    return get_current_weather(location_key=key)
 
 
 def _shape_current_weather_payload(raw: dict) -> dict:
@@ -35,7 +43,7 @@ def _shape_current_weather_payload(raw: dict) -> dict:
     return shaped
 
 
-def _telegram_text(payload: dict) -> str:
+def _telegram_text(payload: dict, location_key: str = DEFAULT_LOCATION_KEY) -> str:
     current = payload.get("current")
     if not isinstance(current, dict):
         current = {}
@@ -44,9 +52,10 @@ def _telegram_text(payload: dict) -> str:
     level_vi = evaluation.get("level_vi")
     weather_desc = describe_weather_vi(current.get("weather_code"))
     rain_mm = current.get("rain", 0) or current.get("showers", 0)
+    label = CURRENT_WEATHER_LOCATIONS.get(location_key, {}).get("label", location_key)
     return "\n".join(
         [
-            f"📍 Vị trí: {payload.get('location_key', 'Da Nang')}",
+            f"📍 Vị trí: {label}",
             "────────────────────────",
             f"🕒 Cập nhật lúc: {current.get('time', '—')}",
             (
@@ -66,13 +75,16 @@ def _telegram_text(payload: dict) -> str:
     )
 
 
-def run_current_weather_report() -> dict:
+def run_current_weather_report(location_key: str | None = None) -> dict:
     """Fetch current weather, insert current_weather, then notify Telegram."""
+    key = resolve_current_weather_location(location_key)
     fetched_at = datetime.now(timezone.utc)  # noqa: UP017
-    raw = fetch_current_weather()
+    raw = fetch_current_weather(location_key=key)
     payload = _shape_current_weather_payload(raw)
-    saved = insert_current_weather(payload, fetched_at=fetched_at)
-    send_telegram_message(_telegram_text(payload))
+    saved = insert_current_weather(
+        payload, fetched_at=fetched_at, location_key=key
+    )
+    send_telegram_message(_telegram_text(payload, location_key=key))
     return {
         "ok": True,
         "id": saved.get("id"),
