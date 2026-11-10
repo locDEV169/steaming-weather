@@ -343,5 +343,119 @@
         }
       }
     }
+  },
+  "WmoWeatherEvaluation": {
+    "type": "object",
+    "required": [
+      "weather_code",
+      "band_code",
+      "level_en",
+      "level_vi"
+    ],
+    "properties": {
+      "weather_code": {
+        "type": "integer",
+        "example": 51
+      },
+      "band_code": {
+        "type": "string",
+        "example": "drizzle"
+      },
+      "level_en": {
+        "type": "string",
+        "example": "Drizzle and freezing drizzle (light to dense intensities)"
+      },
+      "level_vi": {
+        "type": "string",
+        "example": "Mưa phùn và mưa phùn đóng băng (nhẹ đến dày)"
+      }
+    }
+  },
+  "CurrentWeatherPayload": {
+    "type": "object",
+    "required": [
+      "current"
+    ],
+    "properties": {
+      "latitude": {
+        "type": "number",
+        "example": 16.047079
+      },
+      "longitude": {
+        "type": "number",
+        "example": 108.22
+      },
+      "timezone": {
+        "type": "string",
+        "example": "Asia/Bangkok"
+      },
+      "current": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "current_units": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "evaluation": {
+        "$ref": "#/components/schemas/WmoWeatherEvaluation"
+      }
+    },
+    "additionalProperties": true
+  },
+  "CurrentWeatherStored": {
+    "type": "object",
+    "required": [
+      "location_key",
+      "fetched_at",
+      "payload"
+    ],
+    "properties": {
+      "id": {
+        "type": "integer",
+        "example": 1
+      },
+      "location_key": {
+        "type": "string",
+        "example": "da_nang"
+      },
+      "fetched_at": {
+        "type": "string",
+        "example": "2026-11-10T04:00:00+00:00"
+      },
+      "payload": {
+        "$ref": "#/components/schemas/CurrentWeatherPayload"
+      }
+    }
+  },
+  "CurrentWeatherReportResponse": {
+    "type": "object",
+    "required": [
+      "ok",
+      "location_key",
+      "fetched_at",
+      "payload"
+    ],
+    "properties": {
+      "ok": {
+        "type": "boolean",
+        "example": true
+      },
+      "id": {
+        "type": "integer",
+        "example": 1
+      },
+      "location_key": {
+        "type": "string",
+        "example": "da_nang"
+      },
+      "fetched_at": {
+        "type": "string",
+        "example": "2026-11-10T04:00:00+00:00"
+      },
+      "payload": {
+        "$ref": "#/components/schemas/CurrentWeatherPayload"
+      }
+    }
   }
 }

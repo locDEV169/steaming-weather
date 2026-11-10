@@ -18,4 +18,7 @@ class Config:
     SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
     SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
     SUPABASE_LOCATION_KEY = os.environ.get("SUPABASE_LOCATION_KEY", "da_nang")
+    # Telegram notify for POST /api/v1/current-weather. Keep out of git.
+    TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
     TESTING = False

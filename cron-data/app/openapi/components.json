@@ -37,7 +37,11 @@
                 "INGEST_AUTH_REQUIRED",
                 "SUPABASE_NOT_CONFIGURED",
                 "INGEST_FAILED",
-                "SUPABASE_WRITE_ERROR"
+                "SUPABASE_WRITE_ERROR",
+                "SUPABASE_READ_ERROR",
+                "CURRENT_WEATHER_NOT_FOUND",
+                "TELEGRAM_NOT_CONFIGURED",
+                "TELEGRAM_SEND_ERROR"
               ]
             },
             "message": {

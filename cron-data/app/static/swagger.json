@@ -412,6 +412,144 @@
         }
       }
     },
+    "/api/v1/current-weather": {
+      "get": {
+        "summary": "Read the latest stored current weather",
+        "description": "Reads the newest current_weather row for the configured location from Supabase (order by fetched_at desc). Returns id, location_key, fetched_at, and the stored payload (Open-Meteo current fields plus optional WMO evaluation). Does not call Open-Meteo, does not insert, and does not send Telegram. API key auth is optional and only enforced when WEATHER_API_KEY is set.",
+        "operationId": "getCurrentWeather",
+        "tags": [
+          "current-weather"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest stored current_weather row.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentWeatherStored"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No current_weather row is stored yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Supabase read failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Supabase is not configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Fetch current weather, insert Supabase, notify Telegram",
+        "description": "Fetches Open-Meteo current weather for Da Nang (user curl fields including cloud_cover), shapes the payload, attaches Key WMO evaluation when weather_code maps, inserts a new append-only current_weather row, then sends a Telegram message. Requires WEATHER_API_KEY, Supabase service role env, TELEGRAM_BOT_TOKEN, and TELEGRAM_CHAT_ID.",
+        "operationId": "postCurrentWeather",
+        "tags": [
+          "current-weather"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current weather was inserted and Telegram was notified.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentWeatherReportResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream, Supabase write, or Telegram send failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "API key, Supabase, or Telegram is not configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Open-Meteo timed out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/lifestyle-insights": {
       "get": {
         "summary": "Read the latest lifestyle context forecast",
@@ -654,7 +792,11 @@
                   "INGEST_AUTH_REQUIRED",
                   "SUPABASE_NOT_CONFIGURED",
                   "INGEST_FAILED",
-                  "SUPABASE_WRITE_ERROR"
+                  "SUPABASE_WRITE_ERROR",
+                  "SUPABASE_READ_ERROR",
+                  "CURRENT_WEATHER_NOT_FOUND",
+                  "TELEGRAM_NOT_CONFIGURED",
+                  "TELEGRAM_SEND_ERROR"
                 ]
               },
               "message": {
@@ -1006,6 +1148,120 @@
             "items": {
               "$ref": "#/components/schemas/WeatherRainnyDay"
             }
+          }
+        }
+      },
+      "WmoWeatherEvaluation": {
+        "type": "object",
+        "required": [
+          "weather_code",
+          "band_code",
+          "level_en",
+          "level_vi"
+        ],
+        "properties": {
+          "weather_code": {
+            "type": "integer",
+            "example": 51
+          },
+          "band_code": {
+            "type": "string",
+            "example": "drizzle"
+          },
+          "level_en": {
+            "type": "string",
+            "example": "Drizzle and freezing drizzle (light to dense intensities)"
+          },
+          "level_vi": {
+            "type": "string",
+            "example": "Mưa phùn và mưa phùn đóng băng (nhẹ đến dày)"
+          }
+        }
+      },
+      "CurrentWeatherPayload": {
+        "type": "object",
+        "required": [
+          "current"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "example": 16.047079
+          },
+          "longitude": {
+            "type": "number",
+            "example": 108.22
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Asia/Bangkok"
+          },
+          "current": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "current_units": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "evaluation": {
+            "$ref": "#/components/schemas/WmoWeatherEvaluation"
+          }
+        },
+        "additionalProperties": true
+      },
+      "CurrentWeatherStored": {
+        "type": "object",
+        "required": [
+          "location_key",
+          "fetched_at",
+          "payload"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "location_key": {
+            "type": "string",
+            "example": "da_nang"
+          },
+          "fetched_at": {
+            "type": "string",
+            "example": "2026-11-10T04:00:00+00:00"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/CurrentWeatherPayload"
+          }
+        }
+      },
+      "CurrentWeatherReportResponse": {
+        "type": "object",
+        "required": [
+          "ok",
+          "location_key",
+          "fetched_at",
+          "payload"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "location_key": {
+            "type": "string",
+            "example": "da_nang"
+          },
+          "fetched_at": {
+            "type": "string",
+            "example": "2026-11-10T04:00:00+00:00"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/CurrentWeatherPayload"
           }
         }
       }

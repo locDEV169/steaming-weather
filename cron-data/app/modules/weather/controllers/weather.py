@@ -1,16 +1,25 @@
 """Translate weather service outcomes into HTTP responses."""
 
-import requests
+import requests  # noqa: I001
 from flask import current_app, jsonify
 
 from app.modules.weather.repositories import (
     SNAPSHOT_KINDS,
+    CurrentWeatherNotFoundError,
     LifestyleNotFoundError,
     SnapshotNotFoundError,
     SupabaseConfigError,
     SupabaseReadError,
     SupabaseWriteError,
     get_snapshot,
+)
+from app.modules.weather.provider.telegram import (
+    TelegramConfigError,
+    TelegramSendError,
+)
+from app.modules.weather.services.current_weather_service import (
+    read_latest_current_weather,
+    run_current_weather_report,
 )
 from app.modules.weather.services.ingest_service import run_ingest
 from app.modules.weather.services.lifestyle_service import (
@@ -328,6 +337,168 @@ def post_lifestyle_insight():
                 error={
                     "code": "SUPABASE_WRITE_ERROR",
                     "message": "Failed to insert lifestyle insight into Supabase.",
+                }
+            ),
+            502,
+        )
+
+
+def get_current_weather_report():
+    """Return the latest stored current_weather row. No Telegram side effects."""
+    try:
+        return jsonify(read_latest_current_weather()), 200
+    except CurrentWeatherNotFoundError:
+        return (
+            jsonify(
+                error={
+                    "code": "CURRENT_WEATHER_NOT_FOUND",
+                    "message": "No current weather has been stored yet.",
+                }
+            ),
+            404,
+        )
+    except SupabaseConfigError:
+        return (
+            jsonify(
+                error={
+                    "code": "SUPABASE_NOT_CONFIGURED",
+                    "message": (
+                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
+                    ),
+                }
+            ),
+            503,
+        )
+    except SupabaseReadError:
+        return (
+            jsonify(
+                error={
+                    "code": "SUPABASE_READ_ERROR",
+                    "message": "Failed to read current weather from Supabase.",
+                }
+            ),
+            502,
+        )
+
+
+def post_current_weather_report():
+    """Fetch current weather, insert current_weather, notify Telegram."""
+    api_key = (current_app.config.get("WEATHER_API_KEY") or "").strip()
+    if not api_key:
+        return (
+            jsonify(
+                error={
+                    "code": "INGEST_AUTH_REQUIRED",
+                    "message": (
+                        "Set WEATHER_API_KEY before using /api/v1/current-weather."
+                    ),
+                }
+            ),
+            503,
+        )
+
+    supabase_url = (current_app.config.get("SUPABASE_URL") or "").strip()
+    service_key = (current_app.config.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+    if not supabase_url or not service_key:
+        return (
+            jsonify(
+                error={
+                    "code": "SUPABASE_NOT_CONFIGURED",
+                    "message": (
+                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
+                    ),
+                }
+            ),
+            503,
+        )
+
+    bot_token = (current_app.config.get("TELEGRAM_BOT_TOKEN") or "").strip()
+    chat_id = (current_app.config.get("TELEGRAM_CHAT_ID") or "").strip()
+    if not bot_token or not chat_id:
+        return (
+            jsonify(
+                error={
+                    "code": "TELEGRAM_NOT_CONFIGURED",
+                    "message": (
+                        "TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be configured."
+                    ),
+                }
+            ),
+            503,
+        )
+
+    try:
+        return jsonify(run_current_weather_report()), 200
+    except requests.Timeout:
+        return (
+            jsonify(
+                error={
+                    "code": "UPSTREAM_TIMEOUT",
+                    "message": "Weather provider did not respond in time.",
+                }
+            ),
+            504,
+        )
+    except (TypeError, ValueError):
+        return (
+            jsonify(
+                error={
+                    "code": "INVALID_UPSTREAM_RESPONSE",
+                    "message": "Weather provider returned an invalid response.",
+                }
+            ),
+            502,
+        )
+    except requests.RequestException:
+        return (
+            jsonify(
+                error={
+                    "code": "UPSTREAM_ERROR",
+                    "message": "Weather provider returned an invalid response.",
+                }
+            ),
+            502,
+        )
+    except SupabaseConfigError:
+        return (
+            jsonify(
+                error={
+                    "code": "SUPABASE_NOT_CONFIGURED",
+                    "message": (
+                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
+                    ),
+                }
+            ),
+            503,
+        )
+    except SupabaseWriteError:
+        return (
+            jsonify(
+                error={
+                    "code": "SUPABASE_WRITE_ERROR",
+                    "message": "Failed to upsert current weather into Supabase.",
+                }
+            ),
+            502,
+        )
+    except TelegramConfigError:
+        return (
+            jsonify(
+                error={
+                    "code": "TELEGRAM_NOT_CONFIGURED",
+                    "message": (
+                        "TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be configured."
+                    ),
+                }
+            ),
+            503,
+        )
+    except TelegramSendError:
+        return (
+            jsonify(
+                error={
+                    "code": "TELEGRAM_SEND_ERROR",
+                    "message": "Failed to send Telegram notification.",
                 }
             ),
             502,

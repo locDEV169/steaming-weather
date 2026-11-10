@@ -81,6 +81,7 @@ def test_swagger_docs_and_openapi_definition_are_available(client):
     assert "/api/v1/air-quality" in paths
     assert "/api/v1/snapshots/{slug}" in paths
     assert "/api/v1/ingest" in paths
+    assert "/api/v1/current-weather" in paths
     assert "/api/v1/lifestyle-insights" in paths
 
 
