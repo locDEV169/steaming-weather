@@ -30,7 +30,7 @@ def test_snapshot_weather_returns_payload(client, monkeypatch):
     }
     monkeypatch.setattr(
         "app.modules.weather.controllers.weather.get_snapshot",
-        lambda kind: payload if kind == "weather" else {},
+        lambda kind, location_key=None: payload if kind == "weather" else {},
     )
 
     response = client.get("/api/v1/snapshots/weather")
@@ -56,7 +56,7 @@ def test_snapshot_air_quality_slug_maps_to_kind(client, monkeypatch):
         },
     }
 
-    def fake_get(kind: str):
+    def fake_get(kind: str, location_key=None):
         seen.append(kind)
         return payload
 
@@ -72,12 +72,44 @@ def test_snapshot_air_quality_slug_maps_to_kind(client, monkeypatch):
     assert response.get_json() == payload
 
 
+def test_snapshot_passes_location_query(client, monkeypatch):
+    app = client.application
+    app.config["SUPABASE_URL"] = "https://example.supabase.co"
+    app.config["SUPABASE_SERVICE_ROLE_KEY"] = "service-role"
+    seen: list[tuple[str, str | None]] = []
+
+    def fake_get(kind: str, location_key=None):
+        seen.append((kind, location_key))
+        return {"ok": True}
+
+    monkeypatch.setattr(
+        "app.modules.weather.controllers.weather.get_snapshot",
+        fake_get,
+    )
+
+    response = client.get("/api/v1/snapshots/weather?location=sai_gon")
+
+    assert response.status_code == 200
+    assert seen == [("weather", "sai_gon")]
+
+
+def test_snapshot_rejects_invalid_location(client):
+    app = client.application
+    app.config["SUPABASE_URL"] = "https://example.supabase.co"
+    app.config["SUPABASE_SERVICE_ROLE_KEY"] = "service-role"
+
+    response = client.get("/api/v1/snapshots/weather?location=hue")
+
+    assert response.status_code == 400
+    assert response.get_json()["error"]["code"] == "INVALID_LOCATION"
+
+
 def test_snapshot_not_found(client, monkeypatch):
     app = client.application
     app.config["SUPABASE_URL"] = "https://example.supabase.co"
     app.config["SUPABASE_SERVICE_ROLE_KEY"] = "service-role"
 
-    def raise_missing(_kind: str):
+    def raise_missing(_kind: str, location_key=None):
         from app.modules.weather.repositories.snapshots import SnapshotNotFoundError
 
         raise SnapshotNotFoundError("missing")
@@ -98,7 +130,7 @@ def test_snapshot_read_error(client, monkeypatch):
     app.config["SUPABASE_URL"] = "https://example.supabase.co"
     app.config["SUPABASE_SERVICE_ROLE_KEY"] = "service-role"
 
-    def raise_read(_kind: str):
+    def raise_read(_kind: str, location_key=None):
         from app.modules.weather.repositories.snapshots import SupabaseReadError
 
         raise SupabaseReadError("boom")

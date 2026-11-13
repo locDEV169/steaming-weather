@@ -215,7 +215,7 @@
   "/api/v1/snapshots/{slug}": {
     "get": {
       "summary": "Get a persisted Supabase weather snapshot",
-      "description": "Reads the latest weather_snapshots row for the configured location and returns its payload only (same shape as the matching live endpoint). Slug is weather | rainny | air-quality. Does not call Open-Meteo. Requires prior POST /api/v1/ingest. API key auth is optional when WEATHER_API_KEY is set.",
+      "description": "Reads the latest weather_snapshots row for the requested location and returns its payload only (same shape as the matching live endpoint). Query param location is da_nang (default) or sai_gon. Slug is weather | rainny | air-quality. Does not call Open-Meteo. Requires prior POST /api/v1/ingest for that location. API key auth is optional when WEATHER_API_KEY is set.",
       "operationId": "getWeatherSnapshot",
       "tags": [
         "snapshots"
@@ -242,6 +242,20 @@
               "air-quality"
             ]
           }
+        },
+        {
+          "name": "location",
+          "in": "query",
+          "required": false,
+          "description": "Location key. Defaults to da_nang when omitted.",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "da_nang",
+              "sai_gon"
+            ],
+            "default": "da_nang"
+          }
         }
       ],
       "responses": {
@@ -257,7 +271,7 @@
           }
         },
         "400": {
-          "description": "Invalid snapshot slug.",
+          "description": "Invalid snapshot slug or location.",
           "content": {
             "application/json": {
               "schema": {
@@ -312,7 +326,7 @@
   "/api/v1/ingest": {
     "post": {
       "summary": "Ingest shaped snapshots into Supabase",
-      "description": "Fetches Open-Meteo weather and air quality, shapes rainny and AQ results, and upserts latest-only rows into weather_snapshots. Requires WEATHER_API_KEY and Supabase service role env. Partial per-kind updates are allowed. Cron is not required.",
+      "description": "Fetches Open-Meteo weather and air quality for the requested location (da_nang default, or sai_gon), shapes rainny and AQ results, and upserts latest-only rows into weather_snapshots keyed by (location_key, kind). Coords come from the same location registry as current-weather. Requires WEATHER_API_KEY and Supabase service role env. Partial per-kind updates are allowed.",
       "operationId": "postWeatherIngest",
       "tags": [
         "ingest"
@@ -325,6 +339,22 @@
           "BearerAuth": []
         }
       ],
+      "parameters": [
+        {
+          "name": "location",
+          "in": "query",
+          "required": false,
+          "description": "Location key. Defaults to da_nang when omitted.",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "da_nang",
+              "sai_gon"
+            ],
+            "default": "da_nang"
+          }
+        }
+      ],
       "responses": {
         "200": {
           "description": "At least one snapshot kind was updated.",
@@ -334,6 +364,7 @@
                 "type": "object",
                 "required": [
                   "ok",
+                  "location_key",
                   "fetched_at",
                   "updated",
                   "results"
@@ -342,6 +373,10 @@
                   "ok": {
                     "type": "boolean",
                     "example": true
+                  },
+                  "location_key": {
+                    "type": "string",
+                    "example": "da_nang"
                   },
                   "fetched_at": {
                     "type": "string",
@@ -367,6 +402,16 @@
             }
           }
         },
+        "400": {
+          "description": "Invalid location query param.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        },
         "401": {
           "description": "Missing or invalid API key.",
           "content": {
@@ -379,6 +424,103 @@
         },
         "502": {
           "description": "No snapshot kinds were updated.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        },
+        "503": {
+          "description": "Ingest auth or Supabase is not configured.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/ingest-all": {
+    "post": {
+      "summary": "Ingest snapshots for all registry locations",
+      "description": "Runs the same snapshot ingest as POST /api/v1/ingest once per registered location (da_nang then sai_gon). One HTTP call covers both cities. Partial per-location success is allowed: HTTP 200 if at least one location updated. Requires WEATHER_API_KEY and Supabase service role env. Prefer this for manual/Swagger seed; production cron may still POST /api/v1/ingest per location.",
+      "operationId": "postWeatherIngestAll",
+      "tags": [
+        "ingest"
+      ],
+      "security": [
+        {
+          "ApiKeyAuth": []
+        },
+        {
+          "BearerAuth": []
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "At least one location had a successful kind update.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "ok",
+                  "locations",
+                  "updated_locations",
+                  "results_by_location"
+                ],
+                "properties": {
+                  "ok": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "locations": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "da_nang",
+                      "sai_gon"
+                    ]
+                  },
+                  "updated_locations": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "da_nang",
+                      "sai_gon"
+                    ]
+                  },
+                  "results_by_location": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Per-location bodies matching POST /api/v1/ingest."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "Missing or invalid API key.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiErrorResponse"
+              }
+            }
+          }
+        },
+        "502": {
+          "description": "No location updated any snapshot kind.",
           "content": {
             "application/json": {
               "schema": {

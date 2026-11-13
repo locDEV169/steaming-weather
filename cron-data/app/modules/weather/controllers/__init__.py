@@ -10,6 +10,7 @@ from app.modules.weather.controllers.weather import (
     post_current_weather_report,
     post_lifestyle_insight,
     post_weather_ingest,
+    post_weather_ingest_all,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "post_current_weather_report",
     "post_lifestyle_insight",
     "post_weather_ingest",
+    "post_weather_ingest_all",
 ]

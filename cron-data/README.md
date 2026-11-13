@@ -4,7 +4,7 @@ Flask API và CLI lấy dự báo thời tiết từ [Open-Meteo Forecast API](h
 
 ## Cấu trúc
 
-Tên folder `cron-data` là lịch sử monorepo; hiện tại đây là **Flask weather API + CLI**, kèm ingest lên Supabase. Scheduler Docker (sidecar) gọi `POST /api/v1/current-weather`.
+Tên folder `cron-data` là lịch sử monorepo; hiện tại đây là **Flask weather API + CLI**, kèm ingest lên Supabase. Scheduler Docker (sidecar) gọi `POST /api/v1/current-weather` và `POST /api/v1/ingest`.
 
 ```text
 cron-data/
@@ -150,10 +150,11 @@ API cung cấp:
 - `GET /api/v1/weather` — mỗi request gọi Open-Meteo trực tiếp qua `app/modules/weather/provider/api.py` và trả payload JSON gồm `current`, `hourly`, `daily` cùng metadata. Endpoint không đọc snapshot từ `data/open_meteo.json` và hiện chưa ghi lại file CSV/JSON.
 - `GET /api/v1/weather-rainny-forecast` — series lượng mưa theo ngày (past + current + future) để FE chart. Không cần query param; server lấy `as_of` theo `Asia/Bangkok`. Mỗi phần tử có `date`, `rain_sum`, và `kind` (`past` | `current` | `future`).
 - `GET /api/v1/air-quality` — mỗi request gọi Open-Meteo Air Quality API và trả payload upstream (European AQI + pollutants hiện tại cho Đà Nẵng) kèm `results.overall` (band từ `european_aqi`, bảng Open-Meteo/EEA 2024) và `results.summary` (nhãn/ý nghĩa song ngữ VI+EN để FE hiển thị). `hourly.uv_index` được giữ trong payload để ingest lưu lên Supabase. Khi có `uv_index`, `results.uv` là mức WHO của giờ hiện tại (0–2 Thấp, 3–5 Trung bình, 6–7 Cao, 8–10 Rất cao, ≥11 Cực cao). Không dùng US AQI; chưa có đánh giá từng pollutant. Text summary mang tính thông tin UI, không phải tư vấn y tế.
-- `POST /api/v1/ingest` — fetch + shape weather/rainny/air_quality rồi upsert vào Supabase (`weather_snapshots`). Không ghi `lifestyle_insights`. Cần `WEATHER_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Cron chưa gắn; gọi tay để seed. Partial update từng kind được phép.
+- `POST /api/v1/ingest` — fetch + shape weather/rainny/air_quality rồi upsert vào Supabase (`weather_snapshots`) theo `?location=` (`da_nang` mặc định | `sai_gon`). Một request = một city. Tọa độ lấy từ cùng registry với current-weather. Không ghi `lifestyle_insights`, không Telegram. Cần `WEATHER_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Docker cron sidecar gọi theo `INGEST_CRON_*`. Partial update từng kind được phép.
+- `POST /api/v1/ingest-all` — gọi ingest lần lượt cho mọi location trong registry (`da_nang`, `sai_gon`) trong **một** HTTP request. Dùng khi seed/Swagger tay; partial per-location OK (200 nếu ≥1 city cập nhật được).
 - `POST /api/v1/lifestyle-insights` — API riêng: fetch Open-Meteo, cắt 72 giờ (nhiệt độ, mã thời tiết, mưa, gió, `apparent_temperature`) và **insert** một dòng vào `lifestyle_insights`. Nhãn giờ của dòng mới là UTC. Mỗi giờ lưu `apparent_temperature` của đúng giờ đó. `current` vẫn kèm giá trị này khi Open-Meteo trả về. Không gọi `run_ingest()` và không ghi `weather_snapshots`. Cần cùng `WEATHER_API_KEY` và Supabase service role.
 - `GET /api/v1/lifestyle-insights` — đọc dòng `lifestyle_insights` có `fetched_at` mới nhất. Phơi đồ và rửa xe dùng 3 giờ đầu từ `as_of`. Giờ nào có xác suất mưa ≥ 40% hoặc `precipitation` ≥ 0.2 mm thì có `flag` "Nguy cơ ướt". Điểm phơi đồ = 100 trừ trung bình PoP của 3 giờ đó (null tính là 0). `laundry.message` là câu của dòng quy chuẩn khớp điểm. `car_wash.mean` là cùng trung bình PoP. Mean nằm trong `score_min` và `score_max` của một mức thì `car_wash.message` là câu của mức đó. `score_min` null được tính là 0. Không trả điểm tập luyện. Không gọi Open-Meteo.
-- `GET /api/v1/snapshots/{weather|rainny|air-quality}` — đọc snapshot đã ingest từ Supabase và trả **payload** (cùng shape với live GET tương ứng). Không gọi Open-Meteo. 404 nếu chưa có row; cần `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
+- `GET /api/v1/snapshots/{weather|rainny|air-quality}` — đọc snapshot đã ingest từ Supabase theo `?location=` (`da_nang` mặc định | `sai_gon`) và trả **payload** (cùng shape với live GET tương ứng). Không gọi Open-Meteo. 404 nếu chưa có row; cần `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
 
 ### Seed data lên Supabase (no-cron MVP)
 
@@ -180,21 +181,29 @@ python scripts/migrate.py supabase/migrations/002_lifestyle_insights.sql
 
 ```powershell
 $env:WEATHER_API_KEY="your-local-key"
-# hoặc set trong .env rồi:
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5000/api/v1/ingest -Headers @{ "X-API-Key" = "your-local-key" }
+# Seed cả 2 city (khuyến nghị khi gọi tay / Swagger):
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5000/api/v1/ingest-all -Headers @{ "X-API-Key" = "your-local-key" }
+# Hoặc từng city (omit location = da_nang):
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:5000/api/v1/ingest?location=da_nang" -Headers @{ "X-API-Key" = "your-local-key" }
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:5000/api/v1/ingest?location=sai_gon" -Headers @{ "X-API-Key" = "your-local-key" }
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5000/api/v1/lifestyle-insights -Headers @{ "X-API-Key" = "your-local-key" }
 ```
 
 ```bash
-curl -X POST http://127.0.0.1:5000/api/v1/ingest -H "X-API-Key: your-local-key"
+# Cả 2 city một lần:
+curl -X POST http://127.0.0.1:5000/api/v1/ingest-all -H "X-API-Key: your-local-key"
+# Từng city:
+curl -X POST "http://127.0.0.1:5000/api/v1/ingest?location=da_nang" -H "X-API-Key: your-local-key"
+curl -X POST "http://127.0.0.1:5000/api/v1/ingest?location=sai_gon" -H "X-API-Key: your-local-key"
 ```
 
 Đọc snapshot sau khi ingest (không cần API key nếu `WEATHER_API_KEY` trống):
 
 ```bash
-curl http://127.0.0.1:5000/api/v1/snapshots/weather
-curl http://127.0.0.1:5000/api/v1/snapshots/rainny
-curl http://127.0.0.1:5000/api/v1/snapshots/air-quality
+curl "http://127.0.0.1:5000/api/v1/snapshots/weather?location=da_nang"
+curl "http://127.0.0.1:5000/api/v1/snapshots/weather?location=sai_gon"
+curl "http://127.0.0.1:5000/api/v1/snapshots/rainny?location=sai_gon"
+curl "http://127.0.0.1:5000/api/v1/snapshots/air-quality?location=sai_gon"
 ```
 
 Chạy development server trong thư mục `cron-data`:
@@ -226,18 +235,21 @@ Compose chạy hai service:
 | Service | Việc |
 | --- | --- |
 | `weather-api` | Gunicorn API (port host `${WEATHER_API_PORT:-7500}`) |
-| `current-weather-cron` | `crond` sidecar: `POST /api/v1/current-weather` theo lịch |
+| `current-weather-cron` | `crond` sidecar: current-weather + snapshot ingest theo lịch |
 
 Cron defaults (override trong `.env`):
 
-- `CURRENT_WEATHER_CRON_SCHEDULE=0 * * * *` (mỗi giờ)
+- `CURRENT_WEATHER_CRON_SCHEDULE=0 * * * *` (mỗi giờ :00)
 - `CURRENT_WEATHER_CRON_LOCATIONS=da_nang,sai_gon`
+- `INGEST_CRON_SCHEDULE=5 * * * *` (mỗi giờ :05, lệch current-weather)
+- `INGEST_CRON_LOCATIONS=da_nang,sai_gon`
 - `WEATHER_API_KEY` phải khớp key của API
 
 Chạy tay một vòng (trong container cron hoặc host có `curl`):
 
 ```powershell
 docker compose exec current-weather-cron /usr/local/bin/cron_current_weather.sh
+docker compose exec current-weather-cron /usr/local/bin/cron_ingest.sh
 ```
 
 Hoặc chỉ build API (không cron):

@@ -3,6 +3,12 @@
 import requests  # noqa: I001
 from flask import current_app, jsonify, request
 
+from app.modules.weather.api_paths import (
+    API_V1_CURRENT_WEATHER,
+    API_V1_INGEST,
+    API_V1_INGEST_ALL,
+    API_V1_LIFESTYLE_INSIGHTS,
+)
 from app.modules.weather.repositories import (
     SNAPSHOT_KINDS,
     CurrentWeatherNotFoundError,
@@ -24,7 +30,10 @@ from app.modules.weather.services.current_weather_service import (
     read_latest_current_weather,
     run_current_weather_report,
 )
-from app.modules.weather.services.ingest_service import run_ingest
+from app.modules.weather.services.ingest_service import (
+    run_ingest,
+    run_ingest_all,
+)
 from app.modules.weather.services.lifestyle_service import (
     read_latest_lifestyle,
     run_lifestyle_capture,
@@ -35,7 +44,7 @@ from app.modules.weather.services.weather_service import (
     get_weather_rainny,
 )
 
-# URL slug → DB kind for GET /api/v1/snapshots/<slug>
+# URL slug → DB kind for GET {API_V1_SNAPSHOTS}/<slug>
 SNAPSHOT_SLUGS = {
     "weather": "weather",
     "rainny": "rainny",
@@ -164,26 +173,23 @@ def get_weather_snapshot(slug: str):
             400,
         )
 
+    location_key, loc_error = _resolve_current_weather_location_param()
+    if loc_error is not None:
+        return loc_error
+
     try:
-        return jsonify(get_snapshot(kind))
+        return jsonify(get_snapshot(kind, location_key=location_key))
     except SupabaseConfigError:
-        return (
-            jsonify(
-                error={
-                    "code": "SUPABASE_NOT_CONFIGURED",
-                    "message": (
-                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
-                    ),
-                }
-            ),
-            503,
-        )
+        return _supabase_not_configured_response()
     except SnapshotNotFoundError:
         return (
             jsonify(
                 error={
                     "code": "SNAPSHOT_NOT_FOUND",
-                    "message": f"No snapshot found for kind '{slug}'.",
+                    "message": (
+                        f"No snapshot found for kind '{slug}' "
+                        f"location={location_key!r}."
+                    ),
                 }
             ),
             404,
@@ -201,47 +207,22 @@ def get_weather_snapshot(slug: str):
 
 
 def post_weather_ingest():
-    api_key = (current_app.config.get("WEATHER_API_KEY") or "").strip()
-    if not api_key:
-        return (
-            jsonify(
-                error={
-                    "code": "INGEST_AUTH_REQUIRED",
-                    "message": ("Set WEATHER_API_KEY before using /api/v1/ingest."),
-                }
-            ),
-            503,
-        )
+    auth_error = _missing_weather_api_key_response(API_V1_INGEST)
+    if auth_error is not None:
+        return auth_error
 
-    supabase_url = (current_app.config.get("SUPABASE_URL") or "").strip()
-    service_key = (current_app.config.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
-    if not supabase_url or not service_key:
-        return (
-            jsonify(
-                error={
-                    "code": "SUPABASE_NOT_CONFIGURED",
-                    "message": (
-                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
-                    ),
-                }
-            ),
-            503,
-        )
+    supabase_error = _supabase_config_error_or_none()
+    if supabase_error is not None:
+        return supabase_error
+
+    location_key, loc_error = _resolve_current_weather_location_param()
+    if loc_error is not None:
+        return loc_error
 
     try:
-        outcome = run_ingest()
+        outcome = run_ingest(location_key=location_key)
     except SupabaseConfigError:
-        return (
-            jsonify(
-                error={
-                    "code": "SUPABASE_NOT_CONFIGURED",
-                    "message": (
-                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
-                    ),
-                }
-            ),
-            503,
-        )
+        return _supabase_not_configured_response()
 
     if not outcome["ok"]:
         return (
@@ -250,6 +231,7 @@ def post_weather_ingest():
                     "code": "INGEST_FAILED",
                     "message": "No snapshots were updated.",
                 },
+                location_key=outcome.get("location_key", location_key),
                 fetched_at=outcome["fetched_at"],
                 results=outcome["results"],
             ),
@@ -259,36 +241,47 @@ def post_weather_ingest():
     return jsonify(outcome), 200
 
 
-def post_lifestyle_insight():
-    """Store one lifestyle context row in lifestyle_insights only."""
-    api_key = (current_app.config.get("WEATHER_API_KEY") or "").strip()
-    if not api_key:
+def post_weather_ingest_all():
+    """Ingest snapshots for every registry location in one request."""
+    auth_error = _missing_weather_api_key_response(API_V1_INGEST_ALL)
+    if auth_error is not None:
+        return auth_error
+
+    supabase_error = _supabase_config_error_or_none()
+    if supabase_error is not None:
+        return supabase_error
+
+    try:
+        outcome = run_ingest_all()
+    except SupabaseConfigError:
+        return _supabase_not_configured_response()
+
+    if not outcome["ok"]:
         return (
             jsonify(
                 error={
-                    "code": "INGEST_AUTH_REQUIRED",
-                    "message": (
-                        "Set WEATHER_API_KEY before using /api/v1/lifestyle-insights."
-                    ),
-                }
+                    "code": "INGEST_FAILED",
+                    "message": "No snapshots were updated for any location.",
+                },
+                locations=outcome.get("locations", []),
+                updated_locations=outcome.get("updated_locations", []),
+                results_by_location=outcome.get("results_by_location", {}),
             ),
-            503,
+            502,
         )
 
-    supabase_url = (current_app.config.get("SUPABASE_URL") or "").strip()
-    service_key = (current_app.config.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
-    if not supabase_url or not service_key:
-        return (
-            jsonify(
-                error={
-                    "code": "SUPABASE_NOT_CONFIGURED",
-                    "message": (
-                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
-                    ),
-                }
-            ),
-            503,
-        )
+    return jsonify(outcome), 200
+
+
+def post_lifestyle_insight():
+    """Store one lifestyle context row in lifestyle_insights only."""
+    auth_error = _missing_weather_api_key_response(API_V1_LIFESTYLE_INSIGHTS)
+    if auth_error is not None:
+        return auth_error
+
+    supabase_error = _supabase_config_error_or_none()
+    if supabase_error is not None:
+        return supabase_error
 
     try:
         return jsonify(run_lifestyle_capture()), 201
@@ -323,17 +316,7 @@ def post_lifestyle_insight():
             502,
         )
     except SupabaseConfigError:
-        return (
-            jsonify(
-                error={
-                    "code": "SUPABASE_NOT_CONFIGURED",
-                    "message": (
-                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
-                    ),
-                }
-            ),
-            503,
-        )
+        return _supabase_not_configured_response()
     except SupabaseWriteError:
         return (
             jsonify(
@@ -344,6 +327,45 @@ def post_lifestyle_insight():
             ),
             502,
         )
+
+
+def _supabase_not_configured_response():
+    return (
+        jsonify(
+            error={
+                "code": "SUPABASE_NOT_CONFIGURED",
+                "message": (
+                    "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
+                ),
+            }
+        ),
+        503,
+    )
+
+
+def _supabase_config_error_or_none():
+    """Return 503 response if Supabase env is missing; else None."""
+    url = (current_app.config.get("SUPABASE_URL") or "").strip()
+    key = (current_app.config.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+    if not url or not key:
+        return _supabase_not_configured_response()
+    return None
+
+
+def _missing_weather_api_key_response(route_path: str):
+    """Return 503 if WEATHER_API_KEY is unset; else None."""
+    api_key = (current_app.config.get("WEATHER_API_KEY") or "").strip()
+    if not api_key:
+        return (
+            jsonify(
+                error={
+                    "code": "INGEST_AUTH_REQUIRED",
+                    "message": f"Set WEATHER_API_KEY before using {route_path}.",
+                }
+            ),
+            503,
+        )
+    return None
 
 
 def _resolve_current_weather_location_param():
@@ -384,17 +406,7 @@ def get_current_weather_report():
             404,
         )
     except SupabaseConfigError:
-        return (
-            jsonify(
-                error={
-                    "code": "SUPABASE_NOT_CONFIGURED",
-                    "message": (
-                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
-                    ),
-                }
-            ),
-            503,
-        )
+        return _supabase_not_configured_response()
     except SupabaseReadError:
         return (
             jsonify(
@@ -413,34 +425,13 @@ def post_current_weather_report():
     if error is not None:
         return error
 
-    api_key = (current_app.config.get("WEATHER_API_KEY") or "").strip()
-    if not api_key:
-        return (
-            jsonify(
-                error={
-                    "code": "INGEST_AUTH_REQUIRED",
-                    "message": (
-                        "Set WEATHER_API_KEY before using /api/v1/current-weather."
-                    ),
-                }
-            ),
-            503,
-        )
+    auth_error = _missing_weather_api_key_response(API_V1_CURRENT_WEATHER)
+    if auth_error is not None:
+        return auth_error
 
-    supabase_url = (current_app.config.get("SUPABASE_URL") or "").strip()
-    service_key = (current_app.config.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
-    if not supabase_url or not service_key:
-        return (
-            jsonify(
-                error={
-                    "code": "SUPABASE_NOT_CONFIGURED",
-                    "message": (
-                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
-                    ),
-                }
-            ),
-            503,
-        )
+    supabase_error = _supabase_config_error_or_none()
+    if supabase_error is not None:
+        return supabase_error
 
     bot_token = (current_app.config.get("TELEGRAM_BOT_TOKEN") or "").strip()
     chat_id = (current_app.config.get("TELEGRAM_CHAT_ID") or "").strip()
@@ -490,17 +481,7 @@ def post_current_weather_report():
             502,
         )
     except SupabaseConfigError:
-        return (
-            jsonify(
-                error={
-                    "code": "SUPABASE_NOT_CONFIGURED",
-                    "message": (
-                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
-                    ),
-                }
-            ),
-            503,
-        )
+        return _supabase_not_configured_response()
     except SupabaseWriteError:
         return (
             jsonify(
@@ -550,17 +531,7 @@ def get_lifestyle_insight():
             404,
         )
     except SupabaseConfigError:
-        return (
-            jsonify(
-                error={
-                    "code": "SUPABASE_NOT_CONFIGURED",
-                    "message": (
-                        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured."
-                    ),
-                }
-            ),
-            503,
-        )
+        return _supabase_not_configured_response()
     except (SupabaseReadError, TypeError, ValueError):
         return (
             jsonify(

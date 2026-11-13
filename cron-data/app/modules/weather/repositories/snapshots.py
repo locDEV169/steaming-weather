@@ -48,7 +48,10 @@ def _require_supabase_config() -> tuple[str, str, str]:
 
 
 def upsert_snapshot(
-    kind: str, payload: dict, fetched_at: datetime | None = None
+    kind: str,
+    payload: dict,
+    fetched_at: datetime | None = None,
+    location_key: str | None = None,
 ) -> dict:
     """Upsert one latest-only snapshot row. Returns the written row metadata."""
     if kind not in SNAPSHOT_KINDS:
@@ -56,14 +59,15 @@ def upsert_snapshot(
     if not isinstance(payload, dict):
         raise TypeError("payload must be a JSON object")
 
-    base_url, service_key, location_key = _require_supabase_config()
+    base_url, service_key, default_location = _require_supabase_config()
+    key = (location_key or default_location).strip() or default_location
     when = fetched_at or datetime.now(timezone.utc)  # noqa: UP017
     if when.tzinfo is None:
         when = when.replace(tzinfo=timezone.utc)  # noqa: UP017
     fetched_at_iso = when.isoformat()
 
     body = {
-        "location_key": location_key,
+        "location_key": key,
         "kind": kind,
         "payload": payload,
         "fetched_at": fetched_at_iso,
@@ -92,7 +96,7 @@ def upsert_snapshot(
     rows = response.json()
     row = rows[0] if isinstance(rows, list) and rows else body
     return {
-        "location_key": row.get("location_key", location_key),
+        "location_key": row.get("location_key", key),
         "kind": row.get("kind", kind),
         "fetched_at": row.get("fetched_at", fetched_at_iso),
     }
@@ -282,18 +286,19 @@ def insert_current_weather(
     }
 
 
-def get_snapshot(kind: str) -> dict:
-    """Fetch one latest snapshot payload for the configured location."""
+def get_snapshot(kind: str, location_key: str | None = None) -> dict:
+    """Fetch one latest snapshot payload for the given (or config) location."""
     if kind not in SNAPSHOT_KINDS:
         raise ValueError(f"Unsupported snapshot kind: {kind}")
 
-    base_url, service_key, location_key = _require_supabase_config()
+    base_url, service_key, default_location = _require_supabase_config()
+    key = (location_key or default_location).strip() or default_location
     try:
         response = requests.get(
             f"{base_url}/rest/v1/weather_snapshots",
             params={
                 "select": "location_key,kind,payload,fetched_at",
-                "location_key": f"eq.{location_key}",
+                "location_key": f"eq.{key}",
                 "kind": f"eq.{kind}",
                 "limit": "1",
             },
@@ -321,7 +326,7 @@ def get_snapshot(kind: str) -> dict:
         ) from exc
     if not isinstance(rows, list) or not rows:
         raise SnapshotNotFoundError(
-            f"No snapshot found for location={location_key!r} kind={kind!r}."
+            f"No snapshot found for location={key!r} kind={kind!r}."
         )
 
     row = rows[0]

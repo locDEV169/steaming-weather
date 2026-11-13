@@ -19,6 +19,7 @@ def test_assemble_includes_weather_paths():
     assert "/api/v1/air-quality" in paths
     assert "/api/v1/snapshots/{slug}" in paths
     assert "/api/v1/ingest" in paths
+    assert "/api/v1/ingest-all" in paths
     assert "/api/v1/current-weather" in paths
     assert "get" in paths["/api/v1/current-weather"]
     assert "post" in paths["/api/v1/current-weather"]

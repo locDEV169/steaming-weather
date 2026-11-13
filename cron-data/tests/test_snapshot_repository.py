@@ -84,6 +84,28 @@ def test_get_snapshot_rejects_unknown_kind(app_ctx):
         get_snapshot("nope")
 
 
+def test_get_snapshot_uses_explicit_location_key(app_ctx):
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = [
+        {
+            "location_key": "sai_gon",
+            "kind": "weather",
+            "payload": {"current": {"temperature_2m": 31.0}},
+            "fetched_at": "2026-11-04T06:00:00+00:00",
+        }
+    ]
+
+    with patch(
+        "app.modules.weather.repositories.snapshots.requests.get",
+        return_value=response,
+    ) as get:
+        payload = get_snapshot("weather", location_key="sai_gon")
+
+    assert payload == {"current": {"temperature_2m": 31.0}}
+    assert get.call_args.kwargs["params"]["location_key"] == "eq.sai_gon"
+
+
 def test_latest_lifestyle_orders_by_fetched_at(app_ctx):
     response = MagicMock()
     response.status_code = 200

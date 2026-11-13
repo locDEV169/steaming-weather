@@ -1,10 +1,17 @@
 """Request and validate data from the Open-Meteo Air Quality API."""
 
+from __future__ import annotations
+
 import requests
 
 from app.modules.weather.provider.config import PARAMS as WEATHER_PARAMS
+from app.modules.weather.provider.current_weather import (
+    CURRENT_WEATHER_LOCATIONS,
+    resolve_current_weather_location,
+)
 
 API_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+# Default (da_nang legacy forecast point) — prefer air_quality_params_for().
 PARAMS = {
     "latitude": WEATHER_PARAMS["latitude"],
     "longitude": WEATHER_PARAMS["longitude"],
@@ -18,8 +25,22 @@ PARAMS = {
 }
 
 
-def fetch_air_quality() -> dict:
-    response = requests.get(API_URL, params=PARAMS, timeout=30)
+def air_quality_params_for(location_key: str | None = None) -> dict:
+    """AQ query params for a known location (registry coords)."""
+    key = resolve_current_weather_location(location_key)
+    loc = CURRENT_WEATHER_LOCATIONS[key]
+    return {
+        **PARAMS,
+        "latitude": loc["latitude"],
+        "longitude": loc["longitude"],
+        "timezone": loc["timezone"],
+    }
+
+
+def fetch_air_quality(location_key: str | None = None) -> dict:
+    response = requests.get(
+        API_URL, params=air_quality_params_for(location_key), timeout=30
+    )
     response.raise_for_status()
     payload = response.json()
     if not isinstance(payload, dict):
